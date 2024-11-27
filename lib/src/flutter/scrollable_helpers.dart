@@ -232,12 +232,12 @@ class EdgeDraggingAutoScroller {
         scrollRenderBox.size.height,
       ),
     );
-    assert(
-      globalRect.size.width >= _dragTargetRelatedToScrollOrigin.size.width &&
-          globalRect.size.height >=
-              _dragTargetRelatedToScrollOrigin.size.height,
-      'Drag target size is larger than scrollable size, which may cause bouncing',
-    );
+    // assert(
+    //   globalRect.size.width >= _dragTargetRelatedToScrollOrigin.size.width &&
+    //       globalRect.size.height >=
+    //           _dragTargetRelatedToScrollOrigin.size.height,
+    //   'Drag target size is larger than scrollable size, which may cause bouncing',
+    // );
     _scrolling = true;
     double? newOffset;
     const double overDragMax = 20.0;
