@@ -10,8 +10,8 @@ import 'package:flutter/material.dart';
 final CommandShortcutEvent copyCommand = CommandShortcutEvent(
   key: 'copy the selected content',
   getDescription: () => AppFlowyEditorL10n.current.cmdCopySelection,
-  command: 'ctrl+c',
-  macOSCommand: 'cmd+c',
+  command: 'ctrl+shift+c',
+  macOSCommand: 'cmd+shift+c',
   handler: _copyCommandHandler,
 );
 
@@ -35,6 +35,35 @@ CommandShortcutEventHandler _copyCommandHandler = (editorState) {
     await AppFlowyClipboard.setData(
       text: text.isEmpty ? null : text,
       html: html.isEmpty ? null : html,
+    );
+  }();
+
+  return KeyEventResult.handled;
+};
+
+final CommandShortcutEvent copyMdCommand = CommandShortcutEvent(
+  key: 'copy the selected content',
+  getDescription: () => AppFlowyEditorL10n.current.cmdCopySelection,
+  command: 'ctrl+c',
+  macOSCommand: 'cmd+c',
+  handler: _copyMdCommandHandler,
+);
+
+CommandShortcutEventHandler _copyMdCommandHandler = (editorState) {
+  final selection = editorState.selection?.normalized;
+  if (selection == null || selection.isCollapsed) {
+    return KeyEventResult.ignored;
+  }
+
+  final nodes = editorState.getSelectedNodes(
+    selection: selection,
+  );
+  final document = Document.blank()..insert([0], nodes);
+  final md = documentToMarkdown(document);
+
+  () async {
+    await AppFlowyClipboard.setData(
+      text: md.isEmpty ? null : md,
     );
   }();
 
