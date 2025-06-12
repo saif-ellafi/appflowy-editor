@@ -59,7 +59,7 @@ CommandShortcutEventHandler _copyMdCommandHandler = (editorState) {
     selection: selection,
   );
   final document = Document.blank()..insert([0], nodes);
-  final md = documentToMarkdown(document);
+  final md = documentToMarkdown(document).trim();
 
   () async {
     await AppFlowyClipboard.setData(
