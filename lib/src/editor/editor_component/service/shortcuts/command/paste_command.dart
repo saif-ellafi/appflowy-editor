@@ -66,10 +66,14 @@ CommandShortcutEventHandler _pasteCommandHandler = (editorState) {
     }
 
     if (text != null && text.isNotEmpty) {
-      final markdownNodes = markdownToDocument(text).root.children;
-      if (markdownNodes.length > 1) {
-        editorState.pasteMultiLineNodes(markdownNodes);
-      } else {
+      try {
+        final markdownNodes = markdownToDocument(text).root.children;
+        if (markdownNodes.length > 1) {
+          editorState.pasteMultiLineNodes(markdownNodes);
+        } else {
+          editorState.pasteSingleLineNode(markdownNodes.first);
+        }
+      } on Object {
         editorState.pastePlainText(text);
       }
     }

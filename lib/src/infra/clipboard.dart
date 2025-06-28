@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 class AppFlowyClipboardData {
@@ -11,11 +10,6 @@ class AppFlowyClipboardData {
 }
 
 class AppFlowyClipboard {
-  static AppFlowyClipboardData? _mockData;
-
-  @visibleForTesting
-  static String? lastText;
-
   static Future<void> setData({
     String? text,
     String? html,
@@ -23,8 +17,6 @@ class AppFlowyClipboard {
     if (text == null) {
       return;
     }
-
-    lastText = text;
 
     return Clipboard.setData(
       ClipboardData(
@@ -34,19 +26,10 @@ class AppFlowyClipboard {
   }
 
   static Future<AppFlowyClipboardData> getData() async {
-    if (_mockData != null) {
-      return _mockData!;
-    }
-
     final data = await Clipboard.getData(Clipboard.kTextPlain);
     return AppFlowyClipboardData(
       text: data?.text,
       html: null,
     );
-  }
-
-  @visibleForTesting
-  static void mockSetData(AppFlowyClipboardData? data) {
-    _mockData = data;
   }
 }
