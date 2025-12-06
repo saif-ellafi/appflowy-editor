@@ -8,7 +8,7 @@ import 'package:flutter/material.dart';
 ///   - web
 ///
 final CommandShortcutEvent homeCommand = CommandShortcutEvent(
-  key: 'scroll to the top of the document',
+  key: 'go to the top of the document',
   getDescription: () => AppFlowyEditorL10n.current.cmdScrollToTop,
   command: 'ctrl+home',
   macOSCommand: 'home',
@@ -16,14 +16,28 @@ final CommandShortcutEvent homeCommand = CommandShortcutEvent(
 );
 
 CommandShortcutEventHandler _homeCommandHandler = (editorState) {
-  final scrollService = editorState.service.scrollService;
-  if (scrollService == null) {
+  final root = editorState.document.root;
+  if (root.children.isEmpty) {
     return KeyEventResult.ignored;
   }
-  // scroll the document to the top
-  scrollService.scrollTo(
-    scrollService.minScrollExtent,
-    duration: const Duration(milliseconds: 150),
+
+  // Move caret to the very first block, offset 0
+  final first = root.children.first;
+  editorState.updateSelectionWithReason(
+    Selection(
+      start: Position(path: first.path, offset: 0),
+      end: Position(path: first.path, offset: 0),
+    ),
   );
+
+  // Optionally still scroll to top so the caret is visible:
+  final scrollService = editorState.service.scrollService;
+  if (scrollService != null) {
+    scrollService.scrollTo(
+      scrollService.minScrollExtent,
+      duration: const Duration(milliseconds: 150),
+    );
+  }
+
   return KeyEventResult.handled;
 };
