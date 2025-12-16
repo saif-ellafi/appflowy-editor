@@ -58,6 +58,10 @@ CommandShortcutEventHandler _copyMdCommandHandler = (editorState) {
     selection: selection,
   );
   final document = Document.blank()..insert([0], nodes);
+  
+  // Replace entity links with their names before markdown conversion
+  _replaceEntityLinksWithNames(document);
+  
   final md = documentToMarkdown(document, lineBreak: '\n').trim();
 
   () async {
@@ -68,3 +72,36 @@ CommandShortcutEventHandler _copyMdCommandHandler = (editorState) {
 
   return KeyEventResult.handled;
 };
+
+void _replaceEntityLinksWithNames(Document document) {
+  for (final node in document.root.children) {
+    _processNode(node);
+  }
+}
+
+void _processNode(Node node) {
+  final delta = node.delta;
+  if (delta != null) {
+    final newOps = <TextOperation>[];
+    for (final op in delta) {
+      if (op is TextInsert && op.text == '\uFFFC') {
+        final entityLink = op.attributes?['entityLink'];
+        if (entityLink is Map) {
+          final name = entityLink['name'] ?? '';
+          newOps.add(TextInsert(name));
+          continue;
+        }
+      }
+      newOps.add(op);
+    }
+    
+    node.updateAttributes({
+      'delta': Delta(operations: newOps).toJson(),
+    });
+  }
+  
+  // Recurse children
+  for (final child in node.children) {
+    _processNode(child);
+  }
+}
