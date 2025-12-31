@@ -27,6 +27,7 @@ class AppFlowyClipboard {
 
   static Future<AppFlowyClipboardData> getData() async {
     final data = await Clipboard.getData(Clipboard.kTextPlain);
+
     return AppFlowyClipboardData(
       text: data?.text,
       html: null,

@@ -39,5 +39,6 @@ CommandShortcutEventHandler _homeCommandHandler = (editorState) {
     );
   }
 
+
   return KeyEventResult.handled;
 };
