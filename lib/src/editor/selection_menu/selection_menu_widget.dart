@@ -275,6 +275,7 @@ class SelectionMenuWidget extends StatefulWidget {
     required this.deleteSlashByDefault,
     this.singleColumn = false,
     this.nameBuilder,
+    this.itemFilter,
   });
 
   final List<SelectionMenuItem> items;
@@ -293,6 +294,7 @@ class SelectionMenuWidget extends StatefulWidget {
   final bool singleColumn;
 
   final SelectionMenuItemNameBuilder? nameBuilder;
+  final bool Function(SelectionMenuItem item, String query)? itemFilter;
 
   @override
   State<SelectionMenuWidget> createState() => _SelectionMenuWidgetState();
@@ -319,20 +321,26 @@ class _SelectionMenuWidgetState extends State<SelectionMenuWidget> {
     var maxKeywordLength = 0;
     final items = widget.items
         .where(
-          (item) => item.allKeywords.any((keyword) {
-            final value = keyword.contains(newKeyword.toLowerCase());
-            if (value) {
-              maxKeywordLength = max(maxKeywordLength, keyword.length);
+          (item) {
+            if (widget.itemFilter != null && !widget.itemFilter!(item, newKeyword)) {
+              return false;
             }
+            return item.allKeywords.any((keyword) {
+              final value = keyword.contains(newKeyword.toLowerCase());
+              if (value) {
+                maxKeywordLength = max(maxKeywordLength, keyword.length);
+              }
 
-            return value;
-          }),
+              return value;
+            });
+          },
         )
         .toList(growable: false);
 
     AppFlowyEditorLog.ui.debug('$items');
 
-    if (keyword.length >= maxKeywordLength + 2 &&
+    if (widget.itemFilter == null &&
+        keyword.length >= maxKeywordLength + 2 &&
         !(widget.deleteSlashByDefault && _searchCounter < 2)) {
       return widget.onExit();
     }
@@ -352,6 +360,10 @@ class _SelectionMenuWidgetState extends State<SelectionMenuWidget> {
     super.initState();
 
     _showingItems = widget.items;
+    if (widget.itemFilter != null) {
+      _showingItems = _showingItems.where((item) => widget.itemFilter!(item, '')).toList();
+    }
+
     if (widget.singleColumn) {
       _scrollController = AutoScrollController();
     }
