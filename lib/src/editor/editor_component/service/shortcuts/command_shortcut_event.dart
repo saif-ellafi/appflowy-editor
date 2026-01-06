@@ -86,7 +86,9 @@ class CommandShortcutEvent {
         windowsCommand.isNotEmpty) {
       this.command = windowsCommand;
       matched = true;
-    } else if ((PlatformExtension.isMacOS || PlatformExtension.isWebOnMacOS) &&
+    } else if ((PlatformExtension.isMacOS ||
+                PlatformExtension.isWebOnMacOS ||
+                PlatformExtension.isIOS) &&
         macOSCommand != null &&
         macOSCommand.isNotEmpty) {
       this.command = macOSCommand;

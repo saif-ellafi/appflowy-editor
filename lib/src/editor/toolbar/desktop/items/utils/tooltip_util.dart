@@ -8,7 +8,8 @@ String shortcutTooltips(
   String? linuxString,
 ) {
   if (kIsWeb) return '';
-  if (PlatformExtension.isMacOS && macOSString != null) {
+  if ((PlatformExtension.isMacOS || PlatformExtension.isIOS) &&
+      macOSString != null) {
     return '\n$macOSString';
   } else if (PlatformExtension.isWindows && windowsString != null) {
     return '\n$windowsString';
