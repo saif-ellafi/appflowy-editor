@@ -85,10 +85,29 @@ void _processNode(Node node) {
     final newOps = <TextOperation>[];
     for (final op in delta) {
       if (op is TextInsert && op.text == '\uFFFC') {
+        // Handle entity links
         final entityLink = op.attributes?['entityLink'];
         if (entityLink is Map) {
           final name = entityLink['name'] ?? '';
           newOps.add(TextInsert(name));
+          continue;
+        }
+        
+        // Handle table links
+        final tableLink = op.attributes?['tableLink'];
+        if (tableLink is Map) {
+          final tableName = tableLink['tableName'] ?? '';
+          final result = tableLink['result'] ?? '';
+          newOps.add(TextInsert('[$tableName: $result]'));
+          continue;
+        }
+        
+        // Handle dice roll links
+        final rollLink = op.attributes?['rollLink'];
+        if (rollLink is Map) {
+          final formula = rollLink['formula'] ?? '';
+          final result = rollLink['result'] ?? '';
+          newOps.add(TextInsert('[$formula: $result]'));
           continue;
         }
       }
