@@ -465,8 +465,13 @@ class PdfHTMLEncoder {
     }
   }
 
-  Future<pw.Widget> _parseParagraphElement(dom.Element element) {
-    return _parseDeltaElement(element);
+  Future<pw.Widget> _parseParagraphElement(dom.Element element) async {
+    final child = await _parseDeltaElement(element);
+
+    return pw.Padding(
+      padding: const pw.EdgeInsets.only(bottom: 6.0),
+      child: child,
+    );
   }
 
   Future<pw.Widget> _parseImageElement(dom.Element element) async {
