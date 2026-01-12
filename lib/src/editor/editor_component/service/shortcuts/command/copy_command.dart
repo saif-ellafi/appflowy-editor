@@ -21,8 +21,8 @@ CommandShortcutEventHandler _copyCommandHandler = (editorState) {
     return KeyEventResult.ignored;
   }
 
-  // plain text.
-  final text = editorState.getTextInSelection(selection).join('\n');
+  // plain text with paragraph breaks preserved.
+  final text = editorState.getTextInSelection(selection).join('\n\n');
 
   // html - not supported yet.
   // final nodes = editorState.getSelectedNodes(

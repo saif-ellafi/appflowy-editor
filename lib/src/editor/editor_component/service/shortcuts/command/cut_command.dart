@@ -16,11 +16,22 @@ final CommandShortcutEvent cutCommand = CommandShortcutEvent(
 );
 
 CommandShortcutEventHandler _cutCommandHandler = (editorState) {
-  if (editorState.selection == null) {
+  final selection = editorState.selection?.normalized;
+  if (selection == null || selection.isCollapsed) {
     return KeyEventResult.ignored;
   }
-  // plain text.
-  handleCut(editorState);
+
+  // plain text with paragraph breaks preserved.
+  final text = editorState.getTextInSelection(selection).join('\n\n');
+
+  () async {
+    await AppFlowyClipboard.setData(
+      text: text.isEmpty ? null : text,
+    );
+  }();
+
+  // Delete the selected content after copying
+  editorState.deleteSelection(selection);
 
   return KeyEventResult.handled;
 };
