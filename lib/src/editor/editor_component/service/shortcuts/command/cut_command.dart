@@ -10,8 +10,8 @@ import 'package:flutter/material.dart';
 final CommandShortcutEvent cutCommand = CommandShortcutEvent(
   key: 'cut the selected content',
   getDescription: () => AppFlowyEditorL10n.current.cmdCutSelection,
-  command: 'ctrl+x',
-  macOSCommand: 'cmd+x',
+  command: 'ctrl+shift+x',
+  macOSCommand: 'cmd+shift+x',
   handler: _cutCommandHandler,
 );
 
