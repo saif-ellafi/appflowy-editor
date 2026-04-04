@@ -58,6 +58,30 @@ extension EditorCopyPaste on EditorState {
       return;
     }
 
+    if (node.parent?.type == 'table/cell') {
+      final mergedDelta = Delta();
+      for (int i = 0; i < nodes.length; i++) {
+        final n = nodes[i];
+        if (n.delta != null) {
+          mergedDelta.addAll(n.delta!.toList());
+        }
+        if (i < nodes.length - 1) {
+          mergedDelta.insert('\n');
+        }
+      }
+      
+      final transaction = this.transaction;
+      transaction.insertTextDelta(node, selection.endIndex, mergedDelta);
+      transaction.afterSelection = Selection.collapsed(
+        Position(
+          path: selection.end.path,
+          offset: selection.endIndex + mergedDelta.length,
+        ),
+      );
+      await apply(transaction);
+      return;
+    }
+
     final transaction = this.transaction;
 
     // check if the first node is a non-delta node,

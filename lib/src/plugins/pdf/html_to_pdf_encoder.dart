@@ -234,45 +234,120 @@ class PdfHTMLEncoder {
     }
   }
 
+  // Maximum characters per table cell in PDF output.
+  // Cells exceeding this limit are truncated with an ellipsis.
+  static const int _maxTableCellChars = 800;
+  static const double _minCompactColumnWidth = 64;
+  static const double _maxCompactColumnWidth = 132;
+
+  static String _truncateCell(String text) {
+    final normalized = text.replaceAll(RegExp(r'\s+'), ' ').trim();
+    if (normalized.length <= _maxTableCellChars) return normalized;
+    return '${normalized.substring(0, _maxTableCellChars)}\u2026';
+  }
+
+  String _extractTableCellText(dom.Node node) {
+    if (node is dom.Text) {
+      return node.text;
+    }
+
+    if (node is! dom.Element) {
+      return '';
+    }
+
+    final buffer = StringBuffer();
+    final localName = node.localName;
+    final isBlock = localName == HTMLTags.paragraph ||
+        localName == HTMLTags.list ||
+        localName == HTMLTags.unorderedList ||
+        localName == HTMLTags.orderedList ||
+        localName == 'div';
+
+    if (localName == HTMLTags.br) {
+      return '\n';
+    }
+
+    for (final child in node.nodes) {
+      buffer.write(_extractTableCellText(child));
+    }
+
+    if (isBlock && buffer.isNotEmpty && !buffer.toString().endsWith('\n')) {
+      buffer.write('\n');
+    }
+
+    return buffer.toString();
+  }
+
+  Map<int, pw.TableColumnWidth> _buildTableColumnWidths(
+    List<List<String>> tableTextRows,
+  ) {
+    if (tableTextRows.isEmpty) {
+      return const <int, pw.TableColumnWidth>{};
+    }
+
+    final columnCount = tableTextRows.fold<int>(
+      0,
+      (maxColumns, row) => row.length > maxColumns ? row.length : maxColumns,
+    );
+
+    if (columnCount == 0) {
+      return const <int, pw.TableColumnWidth>{};
+    }
+
+    final maxColumnLengths = List<int>.filled(columnCount, 0);
+    for (final row in tableTextRows) {
+      for (var columnIndex = 0; columnIndex < row.length; columnIndex++) {
+        final cellLength = row[columnIndex].length;
+        if (cellLength > maxColumnLengths[columnIndex]) {
+          maxColumnLengths[columnIndex] = cellLength;
+        }
+      }
+    }
+
+    final columnWidths = <int, pw.TableColumnWidth>{};
+    for (var columnIndex = 0; columnIndex < columnCount; columnIndex++) {
+      final maxLength = maxColumnLengths[columnIndex];
+      final isCompactColumn = maxLength > 0 && maxLength <= 24;
+
+      if (isCompactColumn) {
+        final targetWidth = (maxLength * 6.0).clamp(
+          _minCompactColumnWidth,
+          _maxCompactColumnWidth,
+        );
+        columnWidths[columnIndex] = pw.FixedColumnWidth(targetWidth);
+      } else {
+        final flex = maxLength <= 0 ? 1.0 : maxLength.toDouble();
+        columnWidths[columnIndex] = pw.FlexColumnWidth(flex);
+      }
+    }
+
+    return columnWidths;
+  }
+
   Future<Iterable<pw.Widget>> _parseRawTableData(dom.Element element) async {
-    List<pw.TableRow> tableRows = [];
+    final tableTextRows = <List<String>>[];
 
     for (dom.Element row in element.querySelectorAll('tr')) {
-      List<pw.Widget> rowData = [];
+      final rowText = <String>[];
       for (final dom.Element cell in row.children) {
-        List<pw.Widget> cellContent = [];
-        //NOTE: Handle nested HTML tags within table cells
-        for (final dom.Node node in cell.nodes) {
-          if (node.nodeType == dom.Node.ELEMENT_NODE) {
-            dom.Element element = node as dom.Element;
-            if (HTMLTags.formattingElements.contains(element.localName)) {
-              final attributes = _parserFormattingElementAttributes(element);
-              cellContent.add(
-                pw.Text(
-                  element.text,
-                  style: attributes.$2,
-                ),
-              );
-            }
-            if (HTMLTags.specialElements.contains(element.localName)) {
-              cellContent.addAll(
-                await _parseSpecialElements(
-                  element,
-                  type: BuiltInAttributeKey.bulletedList,
-                ),
-              );
-            }
-          } else if (node.nodeType == dom.Node.TEXT_NODE) {
-            cellContent.add(
-              pw.Text(
-                (node as dom.Text).data,
-                style: pw.TextStyle(font: font, fontFallback: fontFallback),
-              ),
-            );
-          }
-        }
+        rowText.add(_truncateCell(_extractTableCellText(cell)));
+      }
+      tableTextRows.add(rowText);
+    }
 
-        rowData.add(pw.Wrap(children: cellContent));
+    final tableRows = <pw.TableRow>[];
+    for (final rowText in tableTextRows) {
+      final rowData = <pw.Widget>[];
+      for (final cellText in rowText) {
+        rowData.add(
+          pw.Padding(
+            padding: const pw.EdgeInsets.all(4),
+            child: pw.Text(
+              cellText,
+              style: pw.TextStyle(font: font, fontFallback: fontFallback),
+            ),
+          ),
+        );
       }
       tableRows.add(pw.TableRow(children: rowData));
     }
@@ -281,6 +356,7 @@ class PdfHTMLEncoder {
       pw.Table(
         children: tableRows,
         border: pw.TableBorder.all(color: pdf.PdfColors.black),
+        columnWidths: _buildTableColumnWidths(tableTextRows),
       ),
     ];
   }
