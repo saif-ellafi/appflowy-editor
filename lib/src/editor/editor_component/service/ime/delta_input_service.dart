@@ -98,6 +98,9 @@ class DeltaTextInputService extends TextInputService with DeltaTextInputClient {
   }
 
   @override
+  bool onFocusReceived() => false;
+
+  @override
   void clearComposingTextRange() {
     composingTextRange = TextRange.empty;
   }
