@@ -21,15 +21,14 @@ CommandShortcutEventHandler _copyCommandHandler = (editorState) {
     return KeyEventResult.ignored;
   }
 
-  // plain text with paragraph breaks preserved.
-  final text = editorState.getTextInSelection(selection).join('\n\n');
-
-  // html - not supported yet.
-  // final nodes = editorState.getSelectedNodes(
-  //   selection: selection,
-  // );
-  // final document = Document.blank()..insert([0], nodes);
-  // final html = documentToHTML(document);
+  final nodes = editorState.getSelectedNodes(selection: selection);
+  final document = Document.blank()..insert([0], nodes);
+  // Plain copy: human-readable labels (not PUM tokens).
+  _replaceEntityLinksWithNames(document);
+  final text = document.root.children
+      .map((n) => n.delta?.toPlainText() ?? '')
+      .where((s) => s.isNotEmpty)
+      .join('\n\n');
 
   () async {
     await AppFlowyClipboard.setData(
@@ -89,7 +88,12 @@ void _processNode(Node node) {
         final entityLink = op.attributes?['entityLink'];
         if (entityLink is Map) {
           final name = entityLink['name'] ?? '';
-          newOps.add(TextInsert(name));
+          final tab = entityLink['tab'];
+          if (tab is String && tab.isNotEmpty) {
+            newOps.add(TextInsert('$name › $tab'));
+          } else {
+            newOps.add(TextInsert('$name'));
+          }
           continue;
         }
         
@@ -108,6 +112,19 @@ void _processNode(Node node) {
           final formula = rollLink['formula'] ?? '';
           final result = rollLink['result'] ?? '';
           newOps.add(TextInsert('[$formula: $result]'));
+          continue;
+        }
+
+        // Handle PDF page links
+        final pdfLink = op.attributes?['pdfLink'];
+        if (pdfLink is Map) {
+          final pageLabel = pdfLink['pageLabel'];
+          final page = pdfLink['page'];
+          newOps.add(TextInsert(
+            (pageLabel is String && pageLabel.isNotEmpty)
+                ? pageLabel
+                : 'Page ${page ?? '?'}',
+          ));
           continue;
         }
       }

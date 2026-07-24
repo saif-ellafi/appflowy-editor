@@ -40,7 +40,8 @@ CommandShortcutEventHandler _pasteTextWithoutFormattingCommandHandler =
     final data = await AppFlowyClipboard.getData();
     final text = data.text;
     if (text != null && text.isNotEmpty) {
-      await editorState.pastePlainText(text);
+      // Strip orphan object-replacement chars from broken chip copies.
+      await editorState.pastePlainText(text.replaceAll('\uFFFC', ''));
     }
   }();
 
@@ -55,7 +56,7 @@ CommandShortcutEventHandler _pasteCommandHandler = (editorState) {
 
   () async {
     final data = await AppFlowyClipboard.getData();
-    final text = data.text;
+    final text = data.text?.replaceAll('\uFFFC', '');
     final html = data.html;
     if (html != null && html.isNotEmpty) {
       // if the html is pasted successfully, then return
