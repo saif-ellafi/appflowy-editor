@@ -5,21 +5,21 @@ import 'dart:typed_data';
 import 'package:appflowy_editor/appflowy_editor.dart';
 import 'package:html/dom.dart' as dom;
 import 'package:html/parser.dart' show parse;
-import 'package:pdf/widgets.dart' as pw;
-import 'package:pdf/pdf.dart' as pdf;
-import 'extension/color_ext.dart';
 import 'package:http/http.dart';
 import 'package:markdown/markdown.dart' as md;
+import 'package:pdf/pdf.dart' as pdf;
+import 'package:pdf/widgets.dart' as pw;
+
+import 'extension/color_ext.dart';
 
 /// This class handles conversion from html to pdf
 class PdfHTMLEncoder {
-  final pw.Font? font;
-  final List<pw.Font> fontFallback;
-
   PdfHTMLEncoder({
     this.font,
     required this.fontFallback,
   });
+  final pw.Font? font;
+  final List<pw.Font> fontFallback;
 
   Future<pw.Document> convert(
     String input,
@@ -327,7 +327,7 @@ class PdfHTMLEncoder {
   Future<Iterable<pw.Widget>> _parseRawTableData(dom.Element element) async {
     final tableTextRows = <List<String>>[];
 
-    for (dom.Element row in element.querySelectorAll('tr')) {
+    for (final dom.Element row in element.querySelectorAll('tr')) {
       final rowText = <String>[];
       for (final dom.Element cell in row.children) {
         rowText.add(_truncateCell(_extractTableCellText(cell)));
@@ -509,7 +509,6 @@ class PdfHTMLEncoder {
     dom.Element element, {
     required String type,
   }) {
-    //TODO: Handle Numbered Lists & Handle nested lists
     if (type == TodoListBlockKeys.type) {
       final bracketRightIndex = element.text.indexOf(']') + 1;
       final strippedString =
@@ -559,7 +558,7 @@ class PdfHTMLEncoder {
 
           return pw.Image(pw.MemoryImage(networkImage));
         } else {
-          File localImage = File(src);
+          final File localImage = File(src);
 
           return pw.Image(pw.MemoryImage(await localImage.readAsBytes()));
         }

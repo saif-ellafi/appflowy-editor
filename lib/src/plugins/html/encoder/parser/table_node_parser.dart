@@ -38,7 +38,7 @@ class HtmlTableNodeParser extends HTMLNodeParser {
 
         final List<dom.Node> cellNodes = [];
         for (final childnode in cell.children) {
-          HTMLNodeParser? parser = encodeParsers.firstWhereOrNull(
+          final HTMLNodeParser? parser = encodeParsers.firstWhereOrNull(
             (element) => element.id == childnode.type,
           );
 
