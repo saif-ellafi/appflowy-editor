@@ -6,7 +6,7 @@ final List<CommandShortcutEvent> toggleMarkdownCommands = [
   toggleItalicCommand,
   toggleUnderlineCommand,
   toggleStrikethroughCommand,
-  toggleCodeCommand,
+  // toggleCodeCommand,
 ];
 
 /// Markdown key event.

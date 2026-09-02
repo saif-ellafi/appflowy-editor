@@ -29,6 +29,7 @@ class SelectionMenu extends SelectionMenuService {
     this.singleColumn = false,
     this.menuHeight = 300,
     this.menuWidth = 300,
+    this.itemFilter,
   });
 
   final BuildContext context;
@@ -39,6 +40,7 @@ class SelectionMenu extends SelectionMenuService {
   final bool singleColumn;
   final double menuHeight;
   final double menuWidth;
+  final bool Function(SelectionMenuItem item, String query)? itemFilter;
 
   @override
   final SelectionMenuStyle style;
@@ -137,6 +139,7 @@ class SelectionMenu extends SelectionMenuService {
                         _selectionUpdateByInner = true;
                       },
                       deleteSlashByDefault: deleteSlashByDefault,
+                      itemFilter: itemFilter,
                     ),
                   ),
                 ),

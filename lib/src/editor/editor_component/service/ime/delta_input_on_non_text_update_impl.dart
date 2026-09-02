@@ -42,7 +42,7 @@ Future<void> onNonTextUpdate(
         ),
       );
     }
-  } else if (PlatformExtension.isMacOS) {
+  } else if (PlatformExtension.isMacOS || PlatformExtension.isIOS) {
     if (selection != null) {
       await editorState.updateSelectionWithReason(
         Selection.collapsed(

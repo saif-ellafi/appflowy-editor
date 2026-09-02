@@ -55,8 +55,15 @@ void _pasteMarkdown(EditorState editorState, String markdown) {
     return;
   }
 
-  var path = selection.end.path.next;
+  // Guard: if pasting into a table cell, merge all lines into single delta
   final node = editorState.document.nodeAtPath(selection.end.path);
+  if (node != null && node.parent?.type == 'table/cell') {
+    final mergedText = lines.join('\n');
+    _pasteSingleLine(editorState, selection, mergedText);
+    return;
+  }
+
+  var path = selection.end.path.next;
   final delta = node?.delta;
   if (delta != null && delta.toPlainText().isEmpty) {
     path = selection.end.path;
@@ -224,8 +231,35 @@ void _pasteMultipleLinesInText(
   int offset,
   List<Node> nodes,
 ) {
-  final transaction = editorState.transaction;
+  // Guard: if pasting into a table cell, merge all nodes into a single delta
   final selection = editorState.selection;
+  final currentNode = selection != null
+      ? editorState.document.nodeAtPath(selection.end.path)
+      : null;
+  if (currentNode != null && currentNode.parent?.type == 'table/cell') {
+    final mergedDelta = Delta();
+    for (int i = 0; i < nodes.length; i++) {
+      final n = nodes[i];
+      if (n.delta != null) {
+        mergedDelta.addAll(n.delta!.toList());
+      }
+      if (i < nodes.length - 1) {
+        mergedDelta.insert('\n');
+      }
+    }
+    final transaction = editorState.transaction;
+    transaction.insertTextDelta(currentNode, offset, mergedDelta);
+    transaction.afterSelection = Selection.collapsed(
+      Position(
+        path: selection!.end.path,
+        offset: offset + mergedDelta.length,
+      ),
+    );
+    editorState.apply(transaction);
+    return;
+  }
+
+  final transaction = editorState.transaction;
   final afterSelection =
       _computeSelectionAfterPasteMultipleNodes(editorState, nodes);
 

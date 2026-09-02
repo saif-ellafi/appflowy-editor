@@ -228,8 +228,11 @@ class _TableBlockComponentWidgetState extends State<TableBlockComponentWidget>
   Widget build(BuildContext context) {
     Widget child = Scrollbar(
       controller: _scrollController,
+      thumbVisibility: true,
+      trackVisibility: true,
+      scrollbarOrientation: ScrollbarOrientation.top,
       child: SingleChildScrollView(
-        padding: const EdgeInsets.only(top: 10, left: 10, bottom: 4),
+        padding: const EdgeInsets.only(top: 20, left: 10, bottom: 4),
         controller: _scrollController,
         scrollDirection: Axis.horizontal,
         child: TableView(

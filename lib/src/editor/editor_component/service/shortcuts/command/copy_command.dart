@@ -21,15 +21,14 @@ CommandShortcutEventHandler _copyCommandHandler = (editorState) {
     return KeyEventResult.ignored;
   }
 
-  // plain text.
-  final text = editorState.getTextInSelection(selection).join('\n');
-
-  // html - not supported yet.
-  // final nodes = editorState.getSelectedNodes(
-  //   selection: selection,
-  // );
-  // final document = Document.blank()..insert([0], nodes);
-  // final html = documentToHTML(document);
+  final nodes = editorState.getSelectedNodes(selection: selection);
+  final document = Document.blank()..insert([0], nodes);
+  // Plain copy: human-readable labels (not PUM tokens).
+  _replaceEntityLinksWithNames(document);
+  final text = document.root.children
+      .map((n) => n.delta?.toPlainText() ?? '')
+      .where((s) => s.isNotEmpty)
+      .join('\n\n');
 
   () async {
     await AppFlowyClipboard.setData(
@@ -58,6 +57,10 @@ CommandShortcutEventHandler _copyMdCommandHandler = (editorState) {
     selection: selection,
   );
   final document = Document.blank()..insert([0], nodes);
+  
+  // Replace entity links with their names before markdown conversion
+  _replaceEntityLinksWithNames(document);
+  
   final md = documentToMarkdown(document, lineBreak: '\n').trim();
 
   () async {
@@ -68,3 +71,73 @@ CommandShortcutEventHandler _copyMdCommandHandler = (editorState) {
 
   return KeyEventResult.handled;
 };
+
+void _replaceEntityLinksWithNames(Document document) {
+  for (final node in document.root.children) {
+    _processNode(node);
+  }
+}
+
+void _processNode(Node node) {
+  final delta = node.delta;
+  if (delta != null) {
+    final newOps = <TextOperation>[];
+    for (final op in delta) {
+      if (op is TextInsert && op.text == '\uFFFC') {
+        // Handle entity links
+        final entityLink = op.attributes?['entityLink'];
+        if (entityLink is Map) {
+          final name = entityLink['name'] ?? '';
+          final tab = entityLink['tab'];
+          if (tab is String && tab.isNotEmpty) {
+            newOps.add(TextInsert('$name › $tab'));
+          } else {
+            newOps.add(TextInsert('$name'));
+          }
+          continue;
+        }
+        
+        // Handle table links
+        final tableLink = op.attributes?['tableLink'];
+        if (tableLink is Map) {
+          final tableName = tableLink['tableName'] ?? '';
+          final result = tableLink['result'] ?? '';
+          newOps.add(TextInsert('[$tableName: $result]'));
+          continue;
+        }
+        
+        // Handle dice roll links
+        final rollLink = op.attributes?['rollLink'];
+        if (rollLink is Map) {
+          final formula = rollLink['formula'] ?? '';
+          final result = rollLink['result'] ?? '';
+          newOps.add(TextInsert('[$formula: $result]'));
+          continue;
+        }
+
+        // Handle PDF page links
+        final pdfLink = op.attributes?['pdfLink'];
+        if (pdfLink is Map) {
+          final pageLabel = pdfLink['pageLabel'];
+          final page = pdfLink['page'];
+          newOps.add(TextInsert(
+            (pageLabel is String && pageLabel.isNotEmpty)
+                ? pageLabel
+                : 'Page ${page ?? '?'}',
+          ));
+          continue;
+        }
+      }
+      newOps.add(op);
+    }
+    
+    node.updateAttributes({
+      'delta': Delta(operations: newOps).toJson(),
+    });
+  }
+  
+  // Recurse children
+  for (final child in node.children) {
+    _processNode(child);
+  }
+}
