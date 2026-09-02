@@ -68,6 +68,7 @@ class ImageBlockComponentBuilder extends BlockComponentBuilder {
   @override
   BlockComponentWidget build(BlockComponentContext blockComponentContext) {
     final node = blockComponentContext.node;
+
     return ImageBlockComponentWidget(
       key: node.key,
       node: node,
@@ -122,6 +123,7 @@ class ImageBlockComponentWidgetState extends State<ImageBlockComponentWidget>
   Node get node => widget.node;
 
   final imageKey = GlobalKey();
+
   RenderBox? get _renderBox => context.findRenderObject() as RenderBox?;
 
   late final editorState = Provider.of<EditorState>(context, listen: false);
@@ -129,6 +131,13 @@ class ImageBlockComponentWidgetState extends State<ImageBlockComponentWidget>
   final showActionsNotifier = ValueNotifier<bool>(false);
 
   bool alwaysShowMenu = false;
+
+  @override
+  void dispose() {
+    showActionsNotifier.dispose();
+
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -218,11 +227,16 @@ class ImageBlockComponentWidgetState extends State<ImageBlockComponentWidget>
       );
     }
 
+    child = Padding(
+      padding: margin,
+      child: child,
+    );
+
     return child;
   }
 
   @override
-  Position start() => Position(path: widget.node.path, offset: 0);
+  Position start() => Position(path: widget.node.path);
 
   @override
   Position end() => Position(path: widget.node.path, offset: 1);
@@ -244,6 +258,7 @@ class ImageBlockComponentWidgetState extends State<ImageBlockComponentWidget>
     if (imageBox is RenderBox) {
       return Offset.zero & imageBox.size;
     }
+
     return Rect.zero;
   }
 
@@ -256,6 +271,7 @@ class ImageBlockComponentWidgetState extends State<ImageBlockComponentWidget>
       return null;
     }
     final size = _renderBox!.size;
+
     return Rect.fromLTWH(-size.width / 2.0, 0, size.width, size.height);
   }
 
@@ -275,6 +291,7 @@ class ImageBlockComponentWidgetState extends State<ImageBlockComponentWidget>
             imageBox.size,
       ];
     }
+
     return [Offset.zero & _renderBox!.size];
   }
 
@@ -298,8 +315,10 @@ extension AlignmentExtension on Alignment {
     switch (name) {
       case 'left':
         return Alignment.centerLeft;
+
       case 'right':
         return Alignment.centerRight;
+
       default:
         return Alignment.center;
     }

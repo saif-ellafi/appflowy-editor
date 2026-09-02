@@ -29,8 +29,9 @@ TextSpan mobileTextSpanDecoratorForAttribute(
       ..onTapUp = (_) async {
         if (timer != null && timer!.isActive) {
           // Implement single tap logic
-          safeLaunchUrl(hrefAddress);
           timer!.cancel();
+          await safeLaunchUrl(hrefAddress);
+
           return;
         }
       };
@@ -69,6 +70,7 @@ TextSpan mobileTextSpanDecoratorForAttribute(
         );
       });
     };
+
     return TextSpan(
       style: before.style,
       text: text.text,
@@ -105,9 +107,9 @@ class _LinkEditFormState extends State<LinkEditForm> {
 
   @override
   Widget build(BuildContext context) {
-    var hrefAddressTextEditingController =
+    final hrefAddressTextEditingController =
         TextEditingController(text: widget.hrefAddress);
-    var hrefTextTextEditingController =
+    final hrefTextTextEditingController =
         TextEditingController(text: widget.hrefText);
 
     return Form(
@@ -124,6 +126,7 @@ class _LinkEditFormState extends State<LinkEditForm> {
               if (value == null || value.isEmpty) {
                 return AppFlowyEditorL10n.current.linkTextHint;
               }
+
               return null;
             },
             decoration: InputDecoration(
@@ -145,6 +148,7 @@ class _LinkEditFormState extends State<LinkEditForm> {
               if (value == null || value.isEmpty) {
                 return AppFlowyEditorL10n.current.linkAddressHint;
               }
+
               return null;
             },
             decoration: InputDecoration(

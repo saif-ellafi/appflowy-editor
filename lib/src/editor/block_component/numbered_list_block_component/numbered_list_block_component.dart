@@ -28,6 +28,7 @@ Node numberedListNode({
     'delta': (delta ?? Delta()).toJson(),
     NumberedListBlockKeys.number: number,
   };
+
   return Node(
     type: NumberedListBlockKeys.type,
     attributes: {
@@ -56,6 +57,7 @@ class NumberedListBlockComponentBuilder extends BlockComponentBuilder {
   @override
   BlockComponentWidget build(BlockComponentContext blockComponentContext) {
     final node = blockComponentContext.node;
+
     return NumberedListBlockComponentWidget(
       key: node.key,
       node: node,
@@ -136,7 +138,6 @@ class _NumberedListBlockComponentWidgetState
       alignment: alignment,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         textDirection: textDirection,
         children: [
@@ -177,12 +178,10 @@ class _NumberedListBlockComponentWidgetState
     );
 
     child = Container(
-      color: withBackgroundColor ? backgroundColor : null,
-      child: Padding(
-        key: blockComponentKey,
-        padding: padding,
-        child: child,
-      ),
+      key: blockComponentKey,
+      decoration: withBackgroundColor ? decoration : null,
+      padding: padding,
+      child: child,
     );
 
     child = BlockSelectionContainer(
@@ -226,6 +225,7 @@ class _NumberedListIcon extends StatelessWidget {
     final editorState = context.read<EditorState>();
     final text = editorState.editorStyle.textStyleConfiguration.text;
     final textScaleFactor = editorState.editorStyle.textScaleFactor;
+
     return Container(
       constraints:
           const BoxConstraints(minWidth: 26, minHeight: 22) * textScaleFactor,
@@ -259,6 +259,7 @@ extension on Node {
       2 => indexInSameLevel.roman,
       _ => '$indexInSameLevel',
     };
+
     return '$levelString.';
   }
 }
@@ -280,6 +281,7 @@ class _NumberedListIconBuilder {
       }
       parent = parent.parent;
     }
+
     return level;
   }
 
@@ -302,6 +304,7 @@ class _NumberedListIconBuilder {
     if (startNumber != null) {
       return startNumber + level - 1;
     }
+
     return level;
   }
 }
@@ -311,10 +314,11 @@ extension on int {
     String result = '';
     int number = this;
     while (number > 0) {
-      int remainder = (number - 1) % 26;
+      final int remainder = (number - 1) % 26;
       result = String.fromCharCode(remainder + 65) + result;
       number = (number - 1) ~/ 26;
     }
+
     return result.toLowerCase();
   }
 

@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 // coverage:ignore-file
+// ignore_for_file: dispose_fields
 
 import 'dart:async';
 import 'dart:math';
@@ -246,6 +247,7 @@ class ItemScrollController {
     assert(_scrollableListState != null);
     assert(opacityAnimationWeights.length == 3);
     assert(duration > Duration.zero);
+
     return _scrollableListState!._scrollTo(
       index: index,
       alignment: alignment,
@@ -338,7 +340,7 @@ class _ScrollablePositionedListState extends State<ScrollablePositionedList>
   @override
   void initState() {
     super.initState();
-    ItemPosition? initialPosition =
+    final ItemPosition? initialPosition =
         PageStorage.maybeOf(context)?.readState(context);
     primary.target = initialPosition?.index ?? widget.initialScrollIndex;
     primary.alignment =
@@ -491,6 +493,7 @@ class _ScrollablePositionedListState extends State<ScrollablePositionedList>
             ],
           ),
         );
+
         return child;
       },
     );
@@ -609,8 +612,6 @@ class _ScrollablePositionedListState extends State<ScrollablePositionedList>
         });
       };
       setState(() {
-        // TODO: _startScroll can be re-entrant, which invalidates this assert.
-        // assert(!_isTransitioning);
         secondary.target = index;
         secondary.alignment = alignment;
         _isTransitioning = true;
@@ -639,7 +640,7 @@ class _ScrollablePositionedListState extends State<ScrollablePositionedList>
         if (opacity.value >= 0.5) {
           // Secondary [ListView] is more visible than the primary; make it the
           // new primary.
-          var temp = primary;
+          final temp = primary;
           primary = secondary;
           secondary = temp;
         }
@@ -652,6 +653,7 @@ class _ScrollablePositionedListState extends State<ScrollablePositionedList>
   Animatable<double> _opacityAnimation(List<double> opacityAnimationWeights) {
     const startOpacity = 0.0;
     const endOpacity = 1.0;
+
     return TweenSequence<double>(<TweenSequenceItem<double>>[
       TweenSequenceItem<double>(
         tween: ConstantTween<double>(startOpacity),

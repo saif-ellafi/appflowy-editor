@@ -24,6 +24,7 @@ extension PositionExtension on Position {
       if (previousEnd != null) {
         return previousEnd;
       }
+
       return null;
     } else if (!forward) {
       final end = node.selectable?.end();
@@ -45,6 +46,7 @@ extension PositionExtension on Position {
         }
 
         return Position(path: path, offset: offset);
+
       case SelectionRange.word:
         final delta = node.delta;
         if (delta != null) {
@@ -86,6 +88,7 @@ extension PositionExtension on Position {
       if (editorSelection.isBackward) {
         return current.bottom > next.bottom ? current : next;
       }
+
       return current.top <= next.top ? current : next;
     });
 
@@ -104,6 +107,7 @@ extension PositionExtension on Position {
         ?.configuration;
     if (nodeConfig == null) {
       assert(nodeConfig != null, 'Block Configuration should not be null');
+
       return this;
     }
 
@@ -119,7 +123,7 @@ extension PositionExtension on Position {
 
     // If the current node is not multiline, this will be ~= 0
     // so the loop will be skipped.
-    final remainingMultilineHeight = (textHeight - caretHeight);
+    final remainingMultilineHeight = textHeight - caretHeight;
 
     // Linearly search for a new position.
     // It's acceptable to use a linear search because the starting point is
@@ -212,6 +216,7 @@ extension PositionExtension on Position {
           selectable.start().offset,
           selectable.end().offset,
         );
+
         return Position(path: neighbourPath, offset: offset);
       }
     }
@@ -219,7 +224,7 @@ extension PositionExtension on Position {
     final delta = node.delta;
     if (delta != null) {
       if (upwards) {
-        return Position(path: path, offset: 0);
+        return Position(path: path);
       } else {
         final length = delta.length;
         // move the cursor to the end of the node

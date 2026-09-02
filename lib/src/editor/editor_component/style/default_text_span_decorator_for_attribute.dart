@@ -38,7 +38,8 @@ TextSpan defaultTextSpanDecoratorForAttribute(
             HardwareKeyboard.instance.isControlPressed ||
             HardwareKeyboard.instance.isMetaPressed) {
           tapCount = 0;
-          editorLaunchUrl(href);
+          await editorLaunchUrl(href);
+
           return;
         }
         timer = Timer(const Duration(milliseconds: 200), () {
@@ -65,5 +66,6 @@ TextSpan defaultTextSpanDecoratorForAttribute(
       mouseCursor: SystemMouseCursors.click,
     );
   }
+
   return before;
 }

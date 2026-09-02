@@ -11,6 +11,7 @@ final headingMobileToolbarItem = MobileToolbarItem.withMenu(
     if (selection == null) {
       return const SizedBox.shrink();
     }
+
     return _HeadingMenu(
       selection,
       editorState,
@@ -113,13 +114,12 @@ class _HeadingMenuState extends State<_HeadingMenu> {
 }
 
 class HeadingUnit {
-  final AFMobileIcons icon;
-  final String label;
-  final int level;
-
   HeadingUnit({
     required this.icon,
     required this.label,
     required this.level,
   });
+  final AFMobileIcons icon;
+  final String label;
+  final int level;
 }

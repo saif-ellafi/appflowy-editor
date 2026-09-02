@@ -89,7 +89,7 @@ class _BlockSelectionAreaState extends State<BlockSelectionArea> {
     return ValueListenableBuilder(
       key: ValueKey(widget.node.id + widget.supportTypes.toString()),
       valueListenable: widget.listenable,
-      builder: ((context, value, child) {
+      builder: (context, value, child) {
         final sizedBox = child ?? const SizedBox.shrink();
         final selection = value?.normalized;
 
@@ -114,6 +114,7 @@ class _BlockSelectionAreaState extends State<BlockSelectionArea> {
           final padding = builder?.configuration.blockSelectionAreaMargin(
             widget.node,
           );
+
           return Positioned.fromRect(
             rect: prevBlockRect!,
             child: Container(
@@ -145,6 +146,7 @@ class _BlockSelectionAreaState extends State<BlockSelectionArea> {
           );
           // force to show the cursor
           cursorKey.currentState?.unwrapOrNull<CursorState>()?.show();
+
           return cursor;
         } else {
           // show the selection area when the selection is not collapsed
@@ -155,12 +157,20 @@ class _BlockSelectionAreaState extends State<BlockSelectionArea> {
                   prevSelectionRects!.first.width == 0)) {
             return sizedBox;
           }
+
+          final radius = editorState.selectionExtraInfo is Map
+              ? (editorState.selectionExtraInfo![
+                      selectionExtraInfoSelectionRadius] as double?) ??
+                  0.0
+              : 0.0;
+
           return SelectionAreaPaint(
             rects: prevSelectionRects!,
             selectionColor: widget.selectionColor,
+            radius: radius,
           );
         }
-      }),
+      },
       child: const SizedBox.shrink(),
     );
   }

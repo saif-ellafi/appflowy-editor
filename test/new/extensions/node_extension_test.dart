@@ -32,6 +32,7 @@ void main() async {
       final node = editorState.getNodeAtPath([0]);
       final result = node!.allSatisfyInSelection(selection, (delta) {
         final textInserts = delta.whereType<TextInsert>();
+
         return textInserts
             .every((element) => element.attributes?['bold'] == true);
       });
@@ -63,6 +64,7 @@ void main() async {
       final node = editorState.getNodeAtPath([0]);
       final result = node!.allSatisfyInSelection(selection, (delta) {
         final textInserts = delta.whereType<TextInsert>();
+
         return textInserts
             .every((element) => element.attributes?['bold'] == true);
       });
@@ -95,6 +97,7 @@ void main() async {
       final node = editorState.getNodeAtPath([0]);
       final result = node!.allSatisfyInSelection(selection, (delta) {
         final textInserts = delta.whereType<TextInsert>();
+
         return textInserts
             .every((element) => element.attributes?['bold'] == true);
       });
@@ -143,6 +146,7 @@ void main() async {
       final nodes = editorState.getNodesInSelection(selection);
       final result = nodes.allSatisfyInSelection(selection, (delta) {
         final textInserts = delta.whereType<TextInsert>();
+
         return textInserts
             .every((element) => element.attributes?['bold'] == true);
       });
@@ -178,7 +182,7 @@ void main() async {
       // |Welcome <b>to AppFlowy Editor 🔥!</b>
       // <b>Welcome to AppFlowy</b> Editor 🔥!|
       final selection = Selection(
-        start: Position(path: [0], offset: 0),
+        start: Position(path: [0]),
         end: Position(
           path: [1],
           offset: welcome.length + toAppFlowy.length + editor.length,
@@ -188,6 +192,7 @@ void main() async {
       final nodes = editorState.getNodesInSelection(selection);
       final result = nodes.allSatisfyInSelection(selection, (delta) {
         final textInserts = delta.whereType<TextInsert>();
+
         return textInserts
             .every((element) => element.attributes?['bold'] == true);
       });
@@ -217,7 +222,7 @@ void main() async {
         );
       final editorState = EditorState(document: document);
       final selection = Selection(
-        start: Position(path: [0], offset: 0),
+        start: Position(path: [0]),
         end: Position(path: [2], offset: 5),
       );
       final nodes = editorState.getNodesInSelection(selection);

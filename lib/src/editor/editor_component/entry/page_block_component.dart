@@ -63,6 +63,7 @@ class PageBlockComponent extends BlockComponentStatelessWidget {
             if (scroller != null) {
               editorState.updateAutoScroller(scroller);
             }
+
             return Column(
               children: [
                 if (header != null) header!,
@@ -72,6 +73,7 @@ class PageBlockComponent extends BlockComponentStatelessWidget {
                     if (wrapper != null) {
                       child = wrapper!(context, node: e, child: child);
                     }
+
                     return Container(
                       constraints: BoxConstraints(
                         maxWidth:
@@ -95,7 +97,6 @@ class PageBlockComponent extends BlockComponentStatelessWidget {
 
       return ScrollablePositionedList.builder(
         shrinkWrap: scrollController.shrinkWrap,
-        scrollDirection: Axis.vertical,
         itemCount: items.length + extentCount,
         itemBuilder: (context, index) {
           editorState.updateAutoScroller(Scrollable.of(context));

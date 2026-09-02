@@ -12,7 +12,7 @@ final _numberRegex = RegExp(r'^(\d+)\.');
 CharacterShortcutEvent formatNumberToNumberedList = CharacterShortcutEvent(
   key: 'format number to numbered list',
   character: ' ',
-  handler: (editorState) async => await formatMarkdownSymbol(
+  handler: (editorState) async => formatMarkdownSymbol(
     editorState,
     (node) => node.type != NumberedListBlockKeys.type,
     (node, text, selection) {
@@ -50,6 +50,7 @@ CharacterShortcutEvent formatNumberToNumberedList = CharacterShortcutEvent(
       final match = _numberRegex.firstMatch(text)!;
       final matchText = match.group(0)!;
       final number = matchText.substring(0, matchText.length - 1);
+
       return [
         node.copyWith(
           type: NumberedListBlockKeys.type,
@@ -74,7 +75,7 @@ CharacterShortcutEvent formatNumberToNumberedList = CharacterShortcutEvent(
 CharacterShortcutEvent insertNewLineAfterNumberedList = CharacterShortcutEvent(
   key: 'insert new block after numbered list',
   character: '\n',
-  handler: (editorState) async => await insertNewLineInType(
+  handler: (editorState) async => insertNewLineInType(
     editorState,
     NumberedListBlockKeys.type,
   ),

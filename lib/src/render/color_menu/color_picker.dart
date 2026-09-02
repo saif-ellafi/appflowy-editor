@@ -33,11 +33,13 @@ class ColorOptionList {
     if (colorHex == null) return null;
     final opacityHex = colorHex.substring(2, 4);
     final opacity = int.parse(opacityHex, radix: 16) / 2.55;
+
     return opacity.toStringAsFixed(0);
   }
 
   String? _extractColorHex(String? colorHex) {
     if (colorHex == null) return null;
+
     return colorHex.substring(4);
   }
 }
@@ -84,7 +86,6 @@ class _ColorPickerState extends State<ColorPicker> {
         child: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.start,
             children: _buildColorOptionLists(widget.colorOptionLists),
           ),
         ),
@@ -93,7 +94,7 @@ class _ColorPickerState extends State<ColorPicker> {
   }
 
   List<Widget> _buildColorOptionLists(List<ColorOptionList> colorOptionLists) {
-    List<Widget> colorOptionMenu = [];
+    final List<Widget> colorOptionMenu = [];
     for (var i = 0; i < colorOptionLists.length; i++) {
       if (i != 0) {
         colorOptionMenu.add(const SizedBox(height: 6));
@@ -122,7 +123,6 @@ class _ColorPickerState extends State<ColorPicker> {
   Widget _buildColorItems(ColorOptionList colorOptionList) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisAlignment: MainAxisAlignment.start,
       children: [
         _buildCustomColorItem(colorOptionList),
         ...colorOptionList.colorOptions.map(
@@ -150,7 +150,6 @@ class _ColorPickerState extends State<ColorPicker> {
         hoverColor: widget.pickerItemHoverColor,
         onTap: () => onTap(option.colorHex),
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
             // padding
@@ -186,11 +185,10 @@ class _ColorPickerState extends State<ColorPicker> {
 
   Widget _buildCustomColorItem(ColorOptionList colorOptionList) {
     return ExpansionTile(
-      tilePadding: const EdgeInsets.only(left: 0),
+      tilePadding: const EdgeInsets.only(),
       title: SizedBox(
         height: 36,
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
             const SizedBox(width: 6),
@@ -268,6 +266,7 @@ class _ColorPickerState extends State<ColorPicker> {
     colorHex = _fixColorHex(colorHex);
     opacity = _fixOpacity(opacity);
     final opacityHex = (int.parse(opacity) * 2.55).round().toRadixString(16);
+
     return '0x$opacityHex$colorHex';
   }
 
@@ -278,16 +277,18 @@ class _ColorPickerState extends State<ColorPicker> {
     if (int.tryParse(colorHex, radix: 16) == null) {
       colorHex = 'FFFFFF';
     }
+
     return colorHex;
   }
 
   String _fixOpacity(String opacity) {
-    RegExp regex = RegExp('[a-zA-Z]');
+    final RegExp regex = RegExp('[a-zA-Z]');
     if (regex.hasMatch(opacity) ||
         int.parse(opacity) > 100 ||
         int.parse(opacity) < 0) {
       return '100';
     }
+
     return opacity;
   }
 }

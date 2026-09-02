@@ -4,7 +4,6 @@ import 'package:flutter/foundation.dart';
 import 'package:universal_html/html.dart' show window;
 import 'package:universal_platform/universal_platform.dart';
 
-// TODO(Xazin): Refactor to honor `Theme.platform`
 extension PlatformExtension on Platform {
   static String get _webPlatform =>
       window.navigator.platform?.toLowerCase() ?? '';
@@ -29,6 +28,7 @@ extension PlatformExtension on Platform {
     if (!kIsWeb) {
       return false;
     }
+
     return _webPlatform.contains('mac') == true;
   }
 
@@ -37,6 +37,7 @@ extension PlatformExtension on Platform {
     if (!kIsWeb) {
       return false;
     }
+
     return _webPlatform.contains('windows') == true;
   }
 
@@ -45,6 +46,7 @@ extension PlatformExtension on Platform {
     if (!kIsWeb) {
       return false;
     }
+
     return _webPlatform.contains('linux') == true;
   }
 

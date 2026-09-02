@@ -84,8 +84,10 @@ final class Node extends ChangeNotifier with LinkedListEntry<Node> {
 
   /// The children of the node.
   final LinkedList<Node> _children;
+
   List<Node> get children {
     _cacheChildren ??= _children.toList(growable: false);
+
     return _cacheChildren!;
   }
 
@@ -93,6 +95,7 @@ final class Node extends ChangeNotifier with LinkedListEntry<Node> {
 
   /// The attributes of the node.
   Attributes _attributes;
+
   Attributes get attributes => {..._attributes};
 
   /// The path of the node.
@@ -138,6 +141,7 @@ final class Node extends ChangeNotifier with LinkedListEntry<Node> {
 
     final index = path.first;
     final child = childAtIndexOrNull(index);
+
     return child?.childAtPath(path.sublist(1));
   }
 
@@ -161,6 +165,7 @@ final class Node extends ChangeNotifier with LinkedListEntry<Node> {
     if (_children.isEmpty) {
       _children.add(entry);
       notifyListeners();
+
       return;
     }
 
@@ -213,6 +218,7 @@ final class Node extends ChangeNotifier with LinkedListEntry<Node> {
 
     parent?.notifyListeners();
     parent = null;
+
     return true;
   }
 
@@ -235,6 +241,7 @@ final class Node extends ChangeNotifier with LinkedListEntry<Node> {
     if (attributes['delta'] is List) {
       return Delta.fromJson(attributes['delta']);
     }
+
     return null;
   }
 
@@ -253,6 +260,7 @@ final class Node extends ChangeNotifier with LinkedListEntry<Node> {
       // filter the null value
       map['data'] = attributes..removeWhere((_, value) => value == null);
     }
+
     return map;
   }
 
@@ -263,24 +271,30 @@ final class Node extends ChangeNotifier with LinkedListEntry<Node> {
   /// Be careful of the children, they will be deep copied if not provided.
   Node copyWith({
     String? type,
+    String? id,
+    bool preserveChildIds = false,
     Iterable<Node>? children,
     Attributes? attributes,
   }) {
     final node = Node(
       type: type ?? this.type,
-      id: nanoid(6),
+      id: id ?? nanoid(6),
       attributes: attributes ?? {...this.attributes},
       children: children ?? [],
     );
     if (children == null && _children.isNotEmpty) {
       for (final child in _children) {
         node._children.add(
-          child.copyWith()..parent = node,
+          child.copyWith(
+            id: preserveChildIds ? child.id : null,
+            preserveChildIds: preserveChildIds,
+          )..parent = node,
         );
       }
     }
     node.externalValues = externalValues;
     node.extraInfos = extraInfos;
+
     return node;
   }
 
@@ -297,6 +311,7 @@ final class Node extends ChangeNotifier with LinkedListEntry<Node> {
       return previous;
     }
     final index = parent.children.indexOf(this);
+
     return parent._computePath([index, ...previous]);
   }
 
@@ -351,8 +366,10 @@ final class TextNode extends Node {
   String get subtype => '';
 
   Delta _delta;
+
   @override
   Delta get delta => _delta;
+
   set delta(Delta v) {
     _delta = v;
     notifyListeners();
@@ -362,6 +379,7 @@ final class TextNode extends Node {
   Map<String, Object> toJson() {
     final map = super.toJson();
     map['delta'] = delta.toJson();
+
     return map;
   }
 
@@ -372,19 +390,27 @@ final class TextNode extends Node {
     Attributes? attributes,
     Delta? delta,
     String? id,
+    bool preserveChildIds = false,
   }) {
     final textNode = TextNode(
       children: children ?? [],
       attributes: attributes ?? this.attributes,
       delta: delta ?? this.delta,
     );
+    if (id != null) {
+      textNode.id = id;
+    }
     if (children == null && this.children.isNotEmpty) {
       for (final child in this.children) {
         textNode._children.add(
-          child.copyWith()..parent = textNode,
+          child.copyWith(
+            id: preserveChildIds ? child.id : null,
+            preserveChildIds: preserveChildIds,
+          )..parent = textNode,
         );
       }
     }
+
     return textNode;
   }
 
@@ -401,6 +427,7 @@ extension NodeEquality on Iterable<Node> {
         return false;
       }
     }
+
     return true;
   }
 

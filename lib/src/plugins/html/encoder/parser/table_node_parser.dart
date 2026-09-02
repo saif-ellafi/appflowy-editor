@@ -37,7 +37,7 @@ class HtmlTableNodeParser extends HTMLNodeParser {
         final Node cell = getCellNode(node, j, i)!;
 
         for (final childnode in cell.children) {
-          HTMLNodeParser? parser = encodeParsers.firstWhereOrNull(
+          final HTMLNodeParser? parser = encodeParsers.firstWhereOrNull(
             (element) => element.id == childnode.type,
           );
 
@@ -62,6 +62,7 @@ class HtmlTableNodeParser extends HTMLNodeParser {
 
     final element =
         wrapChildrenNodesWithTagName(HTMLTags.table, childNodes: domNodes);
+
     return [
       element,
     ];

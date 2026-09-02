@@ -15,6 +15,7 @@ MobileToolbarItem buildTextAndBackgroundColorMobileToolbarItem({
       if (selection == null) {
         return const SizedBox.shrink();
       }
+
       return _TextAndBackgroundColorMenu(
         editorState,
         selection,
@@ -48,7 +49,7 @@ class _TextAndBackgroundColorMenuState
   @override
   Widget build(BuildContext context) {
     final style = MobileToolbarTheme.of(context);
-    List<Tab> myTabs = <Tab>[
+    final List<Tab> myTabs = <Tab>[
       Tab(
         text: AppFlowyEditorL10n.current.textColor,
       ),

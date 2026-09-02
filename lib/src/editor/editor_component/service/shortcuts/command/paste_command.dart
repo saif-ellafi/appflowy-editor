@@ -69,12 +69,12 @@ CommandShortcutEventHandler _pasteCommandHandler = (editorState) {
       try {
         final markdownNodes = markdownToDocument(text).root.children;
         if (markdownNodes.length > 1) {
-          editorState.pasteMultiLineNodes(markdownNodes);
+          await editorState.pasteMultiLineNodes(markdownNodes);
         } else {
-          editorState.pasteSingleLineNode(markdownNodes.first);
+          await editorState.pasteSingleLineNode(markdownNodes.first);
         }
       } on Object {
-        editorState.pastePlainText(text);
+        await editorState.pastePlainText(text);
       }
     }
   }();
@@ -113,12 +113,12 @@ extension on EditorState {
     } else {
       await pasteMultiLineNodes(nodes.toList());
     }
+
     return true;
   }
 
   Future<void> pastePlainText(String plainText) async {
     final selectionAttributes = getDeltaAttributesInSelectionStart();
-    // TODO remove this deletion after refactoring pasteHtmlIfAvailable below
     final selection = await deleteSelectionIfNeeded();
 
     if (selection == null) {
@@ -137,14 +137,14 @@ extension on EditorState {
             ..trimRight(),
         )
         .map((paragraph) {
-          Delta delta = Delta();
+          final Delta delta = Delta();
           if (_hrefRegex.hasMatch(paragraph) ||
               _phoneRegex.hasMatch(paragraph)) {
             final match = _hrefRegex.firstMatch(paragraph) ??
                 _phoneRegex.firstMatch(paragraph);
             if (match != null) {
-              int startPos = match.start;
-              int endPos = match.end;
+              final int startPos = match.start;
+              final int endPos = match.end;
               final String? entity = match.group(0);
               if (entity != null) {
                 /// insert the text before the link or phone
@@ -170,6 +170,7 @@ extension on EditorState {
           } else {
             delta.insert(paragraph, attributes: selectionAttributes);
           }
+
           return delta;
         })
         .map((paragraph) => paragraphNode(delta: paragraph))
@@ -205,6 +206,7 @@ extension on EditorState {
       AppFlowyRichTextKeys.href: isPhone ? 'tel:$plainText' : plainText,
     });
     await apply(transaction);
+
     return true;
   }
 }

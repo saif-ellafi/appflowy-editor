@@ -31,7 +31,7 @@ void main() async {
     );
 
     editorState.selection = Selection(
-      start: Position(path: [0], offset: 0),
+      start: Position(path: [0]),
       end: Position(path: [0], offset: input.length),
     );
     await tester.pumpAndSettle();
@@ -80,6 +80,7 @@ class AutoCompleteEditor extends StatelessWidget {
                 if (text.toLowerCase().endsWith('hello')) {
                   return ' world';
                 }
+
                 return null;
               },
             ),

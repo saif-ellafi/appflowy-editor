@@ -28,6 +28,7 @@ Node headingNode({
   Attributes? attributes,
 }) {
   assert(level >= 1 && level <= 6);
+
   return Node(
     type: HeadingBlockKeys.type,
     attributes: {
@@ -51,6 +52,7 @@ class HeadingBlockComponentBuilder extends BlockComponentBuilder {
   @override
   BlockComponentWidget build(BlockComponentContext blockComponentContext) {
     final node = blockComponentContext.node;
+
     return HeadingBlockComponentWidget(
       key: node.key,
       node: node,
@@ -133,7 +135,6 @@ class _HeadingBlockComponentWidgetState
       child: Row(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.start,
         textDirection: textDirection,
         children: [
           Flexible(
@@ -151,6 +152,7 @@ class _HeadingBlockComponentWidgetState
                   widget.textStyleBuilder?.call(level) ??
                       defaultTextStyle(level),
                 );
+
                 return result;
               },
               placeholderText: placeholderText,
@@ -182,16 +184,19 @@ class _HeadingBlockComponentWidgetState
       supportTypes: const [
         BlockSelectionType.block,
       ],
-      child: child,
-    );
-
-    child = Padding(
-      padding: padding,
-      child: Container(
-        color: backgroundColor,
+      child: Padding(
+        padding: padding,
         child: child,
       ),
     );
+
+    final decoration = this.decoration;
+    if (decoration != null) {
+      child = DecoratedBox(
+        decoration: decoration,
+        child: child,
+      );
+    }
 
     if (widget.showActions && widget.actionBuilder != null) {
       child = BlockComponentActionWrapper(
@@ -202,12 +207,18 @@ class _HeadingBlockComponentWidgetState
       );
     }
 
+    child = Padding(
+      padding: margin,
+      child: child,
+    );
+
     return child;
   }
 
   TextStyle? defaultTextStyle(int level) {
     final fontSizes = [32.0, 28.0, 24.0, 18.0, 18.0, 18.0];
     final fontSize = fontSizes.elementAtOrNull(level) ?? 18.0;
+
     return TextStyle(
       fontSize: fontSize,
       fontWeight: FontWeight.bold,

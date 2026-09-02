@@ -34,6 +34,7 @@ class InsertOperation extends Operation {
     final nodes = (json['nodes'] as List)
         .map((n) => Node.fromJson(n))
         .toList(growable: false);
+
     return InsertOperation(path, nodes);
   }
 
@@ -81,6 +82,7 @@ class DeleteOperation extends Operation {
     final nodes = (json['nodes'] as List)
         .map((n) => Node.fromJson(n))
         .toList(growable: false);
+
     return DeleteOperation(path, nodes);
   }
 
@@ -128,6 +130,7 @@ class UpdateOperation extends Operation {
     final path = json['path'] as Path;
     final oldAttributes = json['oldAttributes'] as Attributes;
     final attributes = json['attributes'] as Attributes;
+
     return UpdateOperation(
       path,
       attributes,
@@ -179,6 +182,101 @@ class UpdateOperation extends Operation {
       path.hashCode ^ attributes.hashCode ^ oldAttributes.hashCode;
 }
 
+/// [UpdateNodeTypeOperation] changes a node's block type without replacing
+/// the node in the document tree.
+class UpdateNodeTypeOperation extends Operation {
+  const UpdateNodeTypeOperation(
+    super.path,
+    this.nodeId,
+    this.type,
+    this.oldType,
+    this.attributes,
+    this.oldAttributes,
+  );
+
+  factory UpdateNodeTypeOperation.fromJson(Map<String, dynamic> json) {
+    final path = json['path'] as Path;
+    final nodeId = json['nodeId'] as String? ?? '';
+    final type = json['type'] as String;
+    final oldType = json['oldType'] as String;
+    final attributes = json['attributes'] as Attributes;
+    final oldAttributes = json['oldAttributes'] as Attributes;
+
+    return UpdateNodeTypeOperation(
+      path,
+      nodeId,
+      type,
+      oldType,
+      attributes,
+      oldAttributes,
+    );
+  }
+
+  final String nodeId;
+  final String type;
+  final String oldType;
+  final Attributes attributes;
+  final Attributes oldAttributes;
+
+  @override
+  Operation invert() => UpdateNodeTypeOperation(
+        path,
+        nodeId,
+        oldType,
+        type,
+        oldAttributes,
+        attributes,
+      );
+
+  @override
+  Map<String, dynamic> toJson() {
+    return {
+      'op': 'update_node_type',
+      'path': path,
+      'nodeId': nodeId,
+      'type': type,
+      'oldType': oldType,
+      'attributes': {...attributes},
+      'oldAttributes': {...oldAttributes},
+    };
+  }
+
+  @override
+  Operation copyWith({Path? path}) {
+    return UpdateNodeTypeOperation(
+      path ?? this.path,
+      nodeId,
+      type,
+      oldType,
+      {...attributes},
+      {...oldAttributes},
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+
+    return other is UpdateNodeTypeOperation &&
+        other.path.equals(path) &&
+        other.nodeId == nodeId &&
+        other.type == type &&
+        other.oldType == oldType &&
+        mapEquals(other.attributes, attributes) &&
+        mapEquals(other.oldAttributes, oldAttributes);
+  }
+
+  @override
+  int get hashCode => Object.hash(
+        Object.hashAll(path),
+        nodeId,
+        type,
+        oldType,
+        hashAttributes(attributes),
+        hashAttributes(oldAttributes),
+      );
+}
+
 /// [UpdateTextOperation] represents a text update operation.
 class UpdateTextOperation extends Operation {
   const UpdateTextOperation(
@@ -191,6 +289,7 @@ class UpdateTextOperation extends Operation {
     final path = json['path'] as Path;
     final delta = Delta.fromJson(json['delta']);
     final inverted = Delta.fromJson(json['inverted']);
+
     return UpdateTextOperation(path, delta, inverted);
   }
 
@@ -255,6 +354,7 @@ Path transformPath(Path preInsertPath, Path b, [int delta = 1]) {
 Operation? transformOperation(Operation a, Operation b) {
   if (a is InsertOperation) {
     final newPath = transformPath(a.path, b.path, a.nodes.length);
+
     return b.copyWith(path: newPath);
   } else if (a is DeleteOperation) {
     if (b is DeleteOperation) {
@@ -265,6 +365,7 @@ Operation? transformOperation(Operation a, Operation b) {
       }
     }
     final newPath = transformPath(a.path, b.path, -1 * a.nodes.length);
+
     return b.copyWith(path: newPath);
   }
 

@@ -14,6 +14,7 @@ extension PathExtensions on Path {
     if (equals(other)) {
       return true;
     }
+
     return this > other;
   }
 
@@ -32,6 +33,7 @@ extension PathExtensions on Path {
     if (this.length < other.length) {
       return false;
     }
+
     return true;
   }
 
@@ -39,6 +41,7 @@ extension PathExtensions on Path {
     if (equals(other)) {
       return true;
     }
+
     return this < other;
   }
 
@@ -57,52 +60,57 @@ extension PathExtensions on Path {
     if (this.length > other.length) {
       return false;
     }
+
     return true;
   }
 
   Path get next {
-    Path nextPath = Path.from(this, growable: true);
+    final Path nextPath = Path.from(this);
     if (isEmpty) {
       return nextPath;
     }
     final last = nextPath.last;
+
     return nextPath
       ..removeLast()
       ..add(last + 1);
   }
 
   Path nextNPath(int n) {
-    Path nextPath = Path.from(this, growable: true);
+    final Path nextPath = Path.from(this);
     if (isEmpty) {
       return nextPath;
     }
     final last = nextPath.last;
+
     return nextPath
       ..removeLast()
       ..add(last + n);
   }
 
   Path child(int index) {
-    return Path.from(this, growable: true)..add(index);
+    return Path.from(this)..add(index);
   }
 
   Path get previous {
-    Path previousPath = Path.from(this, growable: true);
+    final Path previousPath = Path.from(this);
     if (isEmpty) {
       return previousPath;
     }
     final last = previousPath.last;
+
     return previousPath
       ..removeLast()
       ..add(max(0, last - 1));
   }
 
   Path previousNPath(int n) {
-    Path previousPath = Path.from(this, growable: true);
+    final Path previousPath = Path.from(this);
     if (isEmpty) {
       return previousPath;
     }
     final last = previousPath.last;
+
     return previousPath
       ..removeLast()
       ..add(max(0, last - n));
@@ -112,7 +120,8 @@ extension PathExtensions on Path {
     if (isEmpty) {
       return this;
     }
-    return Path.from(this, growable: true)..removeLast();
+
+    return Path.from(this)..removeLast();
   }
 
   bool isAncestorOf(Path other) {
@@ -130,6 +139,7 @@ extension PathExtensions on Path {
         return false;
       }
     }
+
     return true;
   }
 
@@ -139,12 +149,13 @@ extension PathExtensions on Path {
     bool isSameDepth = false,
   }) {
     selection = selection?.normalized;
-    bool result = selection != null &&
+    final bool result = selection != null &&
         selection.start.path <= this &&
         this <= selection.end.path;
     if (isSameDepth) {
       return result && selection.start.path.length == length;
     }
+
     return result;
   }
 }

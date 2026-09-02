@@ -4,16 +4,12 @@ import 'package:appflowy_editor/appflowy_editor.dart';
 import 'package:appflowy_editor/src/editor/block_component/table_block_component/table_config.dart';
 
 class TableNode {
-  final TableConfig _config;
-
-  final Node node;
-  final List<List<Node>> _cells = [];
-
   TableNode({
     required this.node,
   }) : _config = TableConfig.fromJson(node.attributes) {
     if (node.type != TableBlockKeys.type) {
       AppFlowyEditorLog.editor.debug('TableNode: node is not a table');
+
       return;
     }
 
@@ -28,6 +24,7 @@ class TableNode {
       AppFlowyEditorLog.editor.debug(
         'TableNode: colsLen or rowsLen is not an integer or null',
       );
+
       return;
     }
 
@@ -35,6 +32,7 @@ class TableNode {
       AppFlowyEditorLog.editor.debug(
         'TableNode: the number of children is not equal to the number of cells',
       );
+
       return;
     }
 
@@ -44,6 +42,7 @@ class TableNode {
           !child.attributes.containsKey(TableCellBlockKeys.colPosition)) {
         AppFlowyEditorLog.editor
             .debug('TableNode: cell has no rowPosition or colPosition');
+
         return;
       }
     }
@@ -62,6 +61,7 @@ class TableNode {
         if (cell == null) {
           AppFlowyEditorLog.editor.debug('TableNode: cell is empty');
           _cells.clear();
+
           return;
         }
 
@@ -73,6 +73,10 @@ class TableNode {
   factory TableNode.fromJson(Map<String, Object> json) {
     return TableNode(node: Node.fromJson(json));
   }
+  final TableConfig _config;
+
+  final Node node;
+  final List<List<Node>> _cells = [];
 
   static TableNode fromList<T>(List<List<T>> cols, {TableConfig? config}) {
     assert(
@@ -88,7 +92,7 @@ class TableNode {
 
     config = config ?? TableConfig();
 
-    Node node = Node(
+    final Node node = Node(
       type: TableBlockKeys.type,
       attributes: {}
         ..addAll({
@@ -124,7 +128,7 @@ class TableNode {
     return TableNode(node: node);
   }
 
-  Node getCell(int col, row) => _cells[col][row];
+  Node getCell(int col, int row) => _cells[col][row];
 
   TableConfig get config => _config;
 
@@ -188,7 +192,7 @@ class TableNode {
     Transaction? transaction,
   }) {
     // The extra 8 is because of paragraph padding
-    double maxHeight = _cells
+    final double maxHeight = _cells
         .map<double>((c) => c[row].children.first.rect.height + 8)
         .reduce(max);
 

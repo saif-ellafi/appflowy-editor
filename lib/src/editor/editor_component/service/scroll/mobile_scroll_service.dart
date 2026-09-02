@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:appflowy_editor/appflowy_editor.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -26,6 +28,7 @@ class _MobileScrollServiceState extends State<MobileScrollService>
   @override
   double? get onePageHeight {
     final renderBox = context.findRenderObject() as RenderBox?;
+
     return renderBox?.size.height;
   }
 
@@ -41,8 +44,10 @@ class _MobileScrollServiceState extends State<MobileScrollService>
   int? get page {
     if (onePageHeight != null) {
       final scrollExtent = maxScrollExtent - minScrollExtent;
+
       return (scrollExtent / onePageHeight!).ceil();
     }
+
     return null;
   }
 
@@ -70,7 +75,13 @@ class _MobileScrollServiceState extends State<MobileScrollService>
 
   @override
   void jumpTo(int index) {
-    editorScrollController.itemScrollController.jumpTo(index: index);
+    final (start, end) = editorScrollController.visibleRangeNotifier.value;
+
+    if (index < start || index > end) {
+      editorScrollController.itemScrollController.jumpTo(
+        index: max(0, index),
+      );
+    }
   }
 
   @override

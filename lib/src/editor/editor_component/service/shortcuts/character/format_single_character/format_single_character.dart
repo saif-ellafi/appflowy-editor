@@ -34,6 +34,7 @@ class CheckSingleFormatFormatResult {
 }) {
   if (character.length != 1) {
     AppFlowyEditorLog.input.debug('character length is not 1');
+
     return (false, null);
   }
 
@@ -41,6 +42,7 @@ class CheckSingleFormatFormatResult {
   // We should return false to let the IME handle it.
   if (!selection.isCollapsed || selection.end.offset < 2) {
     AppFlowyEditorLog.input.debug('selection is not valid');
+
     return (false, null);
   }
 
@@ -58,6 +60,7 @@ class CheckSingleFormatFormatResult {
     if (op.attributes?[AppFlowyRichTextKeys.code] == true) {
       return true;
     }
+
     return false;
   });
   int startIndex = 0;
@@ -69,6 +72,7 @@ class CheckSingleFormatFormatResult {
       if (index <= lastInlineCodeIndex) {
         return sum + op.length;
       }
+
       return sum;
     });
   }
@@ -83,7 +87,7 @@ class CheckSingleFormatFormatResult {
       );
   final lastCharIndex = plainText.lastIndexOf(character);
   final textAfterLastChar = plainText.substring(lastCharIndex + 1);
-  bool textAfterLastCharIsEmpty = textAfterLastChar.trim().isEmpty;
+  final bool textAfterLastCharIsEmpty = textAfterLastChar.trim().isEmpty;
 
   // The following conditions won't trigger the single character formatting:
   // 1. There is no 'Character' in the plainText: lastIndexOf returns -1.
@@ -116,6 +120,17 @@ class CheckSingleFormatFormatResult {
     return (false, null);
   }
 
+  // 6. For underscore italic, only auto-format when the opening underscore
+  // starts a word, i.e. it is at the very start or preceded by whitespace.
+  // This prevents intra-word underscores like `a_b_c` from being italicized,
+  // matching the common markdown behavior (asterisks are unaffected).
+  if (character == '_') {
+    final openingIndex = startIndex + lastCharIndex;
+    if (openingIndex > 0 && rawPlainText[openingIndex - 1].trim().isNotEmpty) {
+      return (false, null);
+    }
+  }
+
   return (
     true,
     CheckSingleFormatFormatResult(
@@ -146,6 +161,7 @@ bool handleFormatByWrappingWithSingleCharacter({
 
   if (!shouldApply || formatResult == null) {
     AppFlowyEditorLog.input.debug('format single character failed');
+
     return false;
   }
 
@@ -179,9 +195,11 @@ bool handleFormatByWrappingWithSingleCharacter({
     case FormatStyleByWrappingWithSingleChar.code:
       style = 'code';
       break;
+
     case FormatStyleByWrappingWithSingleChar.italic:
       style = 'italic';
       break;
+
     case FormatStyleByWrappingWithSingleChar.strikethrough:
       style = 'strikethrough';
       break;
@@ -207,5 +225,6 @@ bool handleFormatByWrappingWithSingleCharacter({
       ),
     );
   editorState.apply(format);
+
   return true;
 }

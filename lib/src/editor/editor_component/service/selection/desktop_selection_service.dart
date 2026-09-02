@@ -2,6 +2,7 @@ import 'package:appflowy_editor/appflowy_editor.dart';
 import 'package:appflowy_editor/src/editor/editor_component/service/selection/mobile_selection_service.dart';
 import 'package:appflowy_editor/src/editor/editor_component/service/selection/shared.dart';
 import 'package:appflowy_editor/src/service/selection/selection_gesture.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -11,7 +12,7 @@ class DesktopSelectionServiceWidget extends StatefulWidget {
     super.key,
     this.cursorColor = const Color(0xFF00BCF0),
     this.selectionColor = const Color(0xFF00BCF0),
-    this.contextMenuItems,
+    this.contextMenuBuilder,
     required this.child,
     this.dropTargetStyle = const AppFlowyDropTargetStyle(),
   });
@@ -19,7 +20,7 @@ class DesktopSelectionServiceWidget extends StatefulWidget {
   final Widget child;
   final Color cursorColor;
   final Color selectionColor;
-  final List<List<ContextMenuItem>>? contextMenuItems;
+  final ContextMenuWidgetBuilder? contextMenuBuilder;
   final AppFlowyDropTargetStyle dropTargetStyle;
 
   @override
@@ -51,6 +52,20 @@ class _DesktopSelectionServiceWidgetState
 
   Position? _panStartPosition;
 
+  /// The word selected by a double-tap. When non-null, the pan that immediately
+  /// follows the double-tap extends the selection by whole words instead of by
+  /// characters, keeping this word fully selected. Cleared on a plain tap,
+  /// triple-tap, or when the pan ends.
+  Selection? _wordSelectionAnchor;
+
+  /// The global offset of the double-tap that produced [_wordSelectionAnchor].
+  /// A following pan only enters word mode when it starts at (essentially) the
+  /// same point, so a stale anchor cannot hijack an unrelated later drag.
+  Offset? _wordSelectionAnchorOffset;
+
+  bool _isDraggingSelection = false;
+  Offset? _lastPanOffset;
+
   OverlayEntry? _dropTargetEntry;
 
   late EditorState editorState = Provider.of<EditorState>(
@@ -58,12 +73,15 @@ class _DesktopSelectionServiceWidgetState
     listen: false,
   );
 
+  _ContextMenuKeyboardInterceptor? _keyboardInterceptor;
+
   @override
   void initState() {
     super.initState();
 
     WidgetsBinding.instance.addObserver(this);
     editorState.selectionNotifier.addListener(_updateSelection);
+    editorState.addScrollViewScrolledListener(_handleAutoScrollWhileDragging);
   }
 
   @override
@@ -75,7 +93,13 @@ class _DesktopSelectionServiceWidgetState
       Debounce.debounce(
         'didChangeMetrics - update selection ',
         const Duration(milliseconds: 100),
-        () => updateSelection(currentSelection.value!),
+        () {
+          final selection = currentSelection.value;
+          if (!mounted || selection == null) {
+            return;
+          }
+          updateSelection(selection);
+        },
       );
     }
   }
@@ -83,8 +107,13 @@ class _DesktopSelectionServiceWidgetState
   @override
   void dispose() {
     clearSelection();
+    _dropTargetEntry?.dispose();
+    _dropTargetEntry = null;
     WidgetsBinding.instance.removeObserver(this);
     editorState.selectionNotifier.removeListener(_updateSelection);
+    editorState.removeScrollViewScrolledListener(
+      _handleAutoScrollWhileDragging,
+    );
     currentSelection.dispose();
     removeDropTarget();
     super.dispose();
@@ -116,6 +145,7 @@ class _DesktopSelectionServiceWidgetState
   @override
   void clearSelection() {
     // currentSelectedNodes = [];
+    _resetPanState();
     currentSelection.value = null;
 
     _clearSelection();
@@ -140,10 +170,45 @@ class _DesktopSelectionServiceWidgetState
       ..clear();
   }
 
+  void _resetPanState() {
+    _isDraggingSelection = false;
+    _panStartOffset = null;
+    _panStartScrollDy = null;
+    _panStartPosition = null;
+    _lastPanOffset = null;
+    _wordSelectionAnchor = null;
+    _wordSelectionAnchorOffset = null;
+  }
+
   void _clearContextMenu() {
+    if (_contextMenuAreas.isEmpty) {
+      return;
+    }
+
     _contextMenuAreas
       ..forEach((overlay) => overlay.remove())
       ..clear();
+
+    if (_keyboardInterceptor != null) {
+      editorState.service.keyboardService
+          ?.unregisterInterceptor(_keyboardInterceptor!);
+      _keyboardInterceptor = null;
+    }
+
+    editorState.service.keyboardService?.enableShortcuts();
+    editorState.service.keyboardService?.enable();
+
+    final selection = editorState.selectionNotifier.value;
+    if (selection != null) {
+      editorState.updateSelectionWithReason(
+        null,
+        reason: SelectionUpdateReason.uiEvent,
+      );
+      editorState.updateSelectionWithReason(
+        selection,
+        reason: SelectionUpdateReason.uiEvent,
+      );
+    }
   }
 
   @override
@@ -170,8 +235,10 @@ class _DesktopSelectionServiceWidgetState
     final selectable = node?.selectable;
     if (selectable == null) {
       clearSelection();
+
       return null;
     }
+
     return selectable.getPositionInOffset(offset);
   }
 
@@ -202,6 +269,10 @@ class _DesktopSelectionServiceWidgetState
   void _onTapDown(TapDownDetails details) {
     _clearContextMenu();
 
+    // A plain tap starts a fresh gesture; drop any pending word-drag anchor.
+    _wordSelectionAnchor = null;
+    _wordSelectionAnchorOffset = null;
+
     final canTap = _interceptors.every(
       (element) => element.canTap?.call(details) ?? true,
     );
@@ -215,6 +286,7 @@ class _DesktopSelectionServiceWidgetState
     if (selectable == null) {
       // Clear old start offset
       _panStartOffset = null;
+
       return clearSelection();
     }
 
@@ -248,21 +320,39 @@ class _DesktopSelectionServiceWidgetState
     final node = getNodeInOffset(offset);
     final selection = node?.selectable?.getWordBoundaryInOffset(offset);
     if (selection == null) {
+      _wordSelectionAnchor = null;
+      _wordSelectionAnchorOffset = null;
       clearSelection();
+
       return;
     }
+    // Arm word-drag mode: the pan that continues from this double-tap will
+    // extend the selection by whole words, keeping this word fully selected.
+    _wordSelectionAnchor = selection.normalized;
+    _wordSelectionAnchorOffset = offset;
     updateSelection(selection);
   }
 
   void _onTripleTapDown(TapDownDetails details) {
+    final canTripleTap = _interceptors.every(
+      (interceptor) => interceptor.canTripleTap?.call(details) ?? true,
+    );
+
+    if (!canTripleTap) {
+      return updateSelection(null);
+    }
+    // Triple-tap is not word-drag mode.
+    _wordSelectionAnchor = null;
+    _wordSelectionAnchorOffset = null;
     final offset = details.globalPosition;
     final node = getNodeInOffset(offset);
     final selectable = node?.selectable;
     if (selectable == null) {
       clearSelection();
+
       return;
     }
-    Selection selection = Selection(
+    final Selection selection = Selection(
       start: selectable.start(),
       end: selectable.end(),
     );
@@ -270,21 +360,66 @@ class _DesktopSelectionServiceWidgetState
   }
 
   void _onSecondaryTapDown(TapDownDetails details) {
-    // if selection is null, or
-    // selection.isCollapsed and the selected node is TextNode.
-    // try to select the word.
+    final offset = details.globalPosition;
     final selection = editorState.selectionNotifier.value;
-    if (selection == null ||
-        (selection.isCollapsed == true &&
-            currentSelectedNodes.first.delta != null)) {
-      _onDoubleTapDown(details);
+    final node = getNodeInOffset(offset);
+    final selectable = node?.selectable;
+
+    if (selectable == null) {
+      clearSelection();
+
+      return;
     }
+
+    final position = selectable.getPositionInOffset(offset);
+    final Selection? newSelection;
+
+    // cases
+    // 1. if the selection is null, then select the current position as a collapsed selection
+    // 2. if the selection is collapsed, then keep it without changes
+    // 3. if the selection is not collapsed, then check if tap is within a selected node
+    // 4. if tap is within the selected nodes, then keep current selection
+    // 5. if tap is outside the selected nodes, then create a collapsed selection at tap point
+
+    if (selection == null) {
+      newSelection = Selection.collapsed(position);
+    } else if (selection.isCollapsed) {
+      newSelection = selection;
+    } else {
+      final selectedNodes = editorState.getNodesInSelection(selection);
+      final isTapInSelectedNode = selectedNodes.any((n) => n == node);
+
+      if (isTapInSelectedNode) {
+        newSelection = selection;
+      } else {
+        newSelection = Selection.collapsed(position);
+      }
+    }
+
+    editorState.updateSelectionWithReason(
+      newSelection,
+      extraInfo: {
+        selectionExtraInfoDisableToolbar: true,
+      },
+    );
 
     _showContextMenu(details);
   }
 
   void _onPanStart(DragStartDetails details) {
-    clearSelection();
+    // In word-drag mode (a pan that continues from a double-tap) keep the
+    // double-tapped word selected; the drag extends it by whole words. The pan
+    // shares the double-tap's pointer-down, so it must start at essentially the
+    // same point — otherwise a stale anchor is dropped and this is a plain drag.
+    final anchorOffset = _wordSelectionAnchorOffset;
+    final isWordSelectionDrag = _wordSelectionAnchor != null &&
+        anchorOffset != null &&
+        (details.globalPosition - anchorOffset).distance <= kDoubleTapSlop;
+    if (!isWordSelectionDrag) {
+      _wordSelectionAnchor = null;
+      _wordSelectionAnchorOffset = null;
+      clearSelection();
+    }
 
     final canPanStart = _interceptors.every(
       (interceptor) => interceptor.canPanStart?.call(details) ?? true,
@@ -300,6 +435,14 @@ class _DesktopSelectionServiceWidgetState
     _panStartPosition = getNodeInOffset(_panStartOffset!)
         ?.selectable
         ?.getPositionInOffset(_panStartOffset!);
+    if (_panStartPosition == null) {
+      _resetPanState();
+
+      return;
+    }
+
+    _lastPanOffset = _panStartOffset;
+    _isDraggingSelection = true;
   }
 
   void _onPanUpdate(DragUpdateDetails details) {
@@ -311,35 +454,18 @@ class _DesktopSelectionServiceWidgetState
       return;
     }
 
-    if (_panStartOffset == null ||
-        _panStartScrollDy == null ||
+    if (!_isDraggingSelection ||
+        _panStartOffset == null ||
         _panStartPosition == null) {
       return;
     }
 
-    final panEndOffset = details.globalPosition;
-    final dy = editorState.service.scrollService?.dy;
-    final panStartOffset = dy == null
-        ? _panStartOffset!
-        : _panStartOffset!.translate(0, _panStartScrollDy! - dy);
-
-    // this one maybe redundant.
-    final last = getNodeInOffset(panEndOffset)?.selectable;
-
-    // compute the selection in range.
-    if (last != null) {
-      final start = _panStartPosition!;
-      final end = last.getSelectionInRange(panStartOffset, panEndOffset).end;
-      final selection = Selection(start: start, end: end);
-
-      if (selection != currentSelection.value) {
-        updateSelection(selection);
-      }
-    }
+    _lastPanOffset = details.globalPosition;
+    _updateSelectionDuringDrag(_lastPanOffset!);
 
     editorState.service.scrollService?.startAutoScroll(
-      panEndOffset,
-      edgeOffset: 100,
+      _lastPanOffset!,
+      duration: const Duration(milliseconds: 2),
     );
   }
 
@@ -351,9 +477,111 @@ class _DesktopSelectionServiceWidgetState
       return;
     }
 
-    _panStartPosition = null;
-
     editorState.service.scrollService?.stopAutoScroll();
+    _resetPanState();
+  }
+
+  void _updateSelectionDuringDrag(Offset panEndOffset) {
+    if (!_isDraggingSelection ||
+        _panStartPosition == null ||
+        _panStartOffset == null) {
+      return;
+    }
+
+    final selectable = getNodeInOffset(panEndOffset)?.selectable;
+    if (selectable == null) {
+      return;
+    }
+
+    final Selection? selection = _wordSelectionAnchor != null
+        ? _wordSelectionDuringDrag(selectable, panEndOffset)
+        : _characterSelectionDuringDrag(selectable, panEndOffset);
+
+    if (selection != null && selection != currentSelection.value) {
+      updateSelection(selection);
+    }
+  }
+
+  /// Character-level drag selection: the anchor is the exact character position
+  /// where the pan started and the extent tracks the cursor character.
+  Selection? _characterSelectionDuringDrag(
+    SelectableMixin selectable,
+    Offset panEndOffset,
+  ) {
+    final double? currentDy = editorState.service.scrollService?.dy;
+    final Offset panStartOffset = currentDy == null || _panStartScrollDy == null
+        ? _panStartOffset!
+        : _panStartOffset!.translate(
+            0,
+            _panStartScrollDy! - currentDy,
+          );
+
+    return Selection(
+      start: _panStartPosition!,
+      end: selectable
+          .getSelectionInRange(
+            panStartOffset,
+            panEndOffset,
+          )
+          .end,
+    );
+  }
+
+  /// Word-level drag selection (double-tap then drag): the double-tapped word
+  /// stays fully selected while the selection extends to the whole word under
+  /// the cursor, in either direction.
+  Selection? _wordSelectionDuringDrag(
+    SelectableMixin selectable,
+    Offset panEndOffset,
+  ) {
+    final anchor = _wordSelectionAnchor;
+    if (anchor == null) {
+      return null;
+    }
+
+    final focus = selectable.getWordBoundaryInOffset(panEndOffset)?.normalized;
+    if (focus == null) {
+      return null;
+    }
+
+    // If the focus word starts before the anchor word, the drag goes backward:
+    // keep the anchor word's end as the base and extend to the focus word's
+    // start. Otherwise the drag goes forward (or stays on the same word).
+    if (_comparePosition(focus.start, anchor.start) < 0) {
+      return Selection(start: anchor.end, end: focus.start);
+    }
+
+    return Selection(start: anchor.start, end: focus.end);
+  }
+
+  /// Compares two positions in document order.
+  /// Returns a negative value if [a] is before [b], zero if equal, and a
+  /// positive value if [a] is after [b].
+  int _comparePosition(Position a, Position b) {
+    if (a.path.equals(b.path)) {
+      return a.offset.compareTo(b.offset);
+    }
+
+    return a.path < b.path ? -1 : 1;
+  }
+
+  void _handleAutoScrollWhileDragging() {
+    if (!mounted || !_isDraggingSelection || _lastPanOffset == null) {
+      return;
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted ||
+          !_isDraggingSelection ||
+          _lastPanOffset == null ||
+          _panStartOffset == null ||
+          _panStartPosition == null) {
+        return;
+      }
+
+      _updateSelectionDuringDrag(_lastPanOffset!);
+      editorState.autoScroller?.continueToAutoScroll();
+    });
   }
 
   void _updateSelection() {
@@ -366,8 +594,8 @@ class _DesktopSelectionServiceWidgetState
   void _showContextMenu(TapDownDetails details) {
     _clearContextMenu();
 
-    // Don't trigger the context menu if there are no items
-    if (widget.contextMenuItems == null || widget.contextMenuItems!.isEmpty) {
+    // Don't trigger the context menu if the builder is null
+    if (widget.contextMenuBuilder == null) {
       return;
     }
 
@@ -376,39 +604,45 @@ class _DesktopSelectionServiceWidgetState
       return;
     }
 
-    final isHitSelectionAreas = currentSelection.value?.isCollapsed == true ||
-        selectionRects.any((element) {
-          const threshold = 20;
-          final scaledArea = Rect.fromCenter(
-            center: element.center,
-            width: element.width + threshold,
-            height: element.height + threshold,
-          );
-          return scaledArea.contains(details.globalPosition);
-        });
-    if (!isHitSelectionAreas) {
-      return;
-    }
-
     // For now, only support the text node.
     if (!currentSelectedNodes.every((element) => element.delta != null)) {
       return;
     }
 
+    final mask = OverlayEntry(
+      builder: (_) => Listener(
+        onPointerDown: (_) => _clearContextMenu(),
+        child: Container(
+          color: Colors.transparent,
+        ),
+      ),
+    );
+    _contextMenuAreas.add(mask);
+    Overlay.of(context, rootOverlay: true).insert(mask);
+
     final baseOffset =
         editorState.renderBox?.localToGlobal(Offset.zero) ?? Offset.zero;
     final offset = details.localPosition + const Offset(10, 10) + baseOffset;
     final contextMenu = OverlayEntry(
-      builder: (context) => ContextMenu(
-        position: offset,
-        editorState: editorState,
-        items: widget.contextMenuItems!,
-        onPressed: () => _clearContextMenu(),
-      ),
+      builder: (_) =>
+          widget.contextMenuBuilder?.call(
+            context,
+            offset,
+            editorState,
+            () => _clearContextMenu(),
+          ) ??
+          SizedBox.shrink(),
     );
 
     _contextMenuAreas.add(contextMenu);
     Overlay.of(context, rootOverlay: true).insert(contextMenu);
+
+    _keyboardInterceptor = _ContextMenuKeyboardInterceptor();
+    editorState.service.keyboardService
+        ?.registerInterceptor(_keyboardInterceptor!);
+
+    editorState.service.keyboardService?.disableShortcuts();
+    editorState.service.keyboardService?.disable();
   }
 
   @override
@@ -488,6 +722,7 @@ class _DesktopSelectionServiceWidgetState
             (isCloserToStart ? startOffset.dy : endOffset.dy) + editorOffset.dy;
 
         final width = blockRect.topRight.dx - startOffset.dx;
+
         return Positioned(
           top: indicatorTop,
           left: startOffset.dx + editorOffset.dx,
@@ -548,5 +783,51 @@ class _DesktopSelectionServiceWidgetState
       dropPath: dropPath,
       cursorNode: node,
     );
+  }
+}
+
+class _ContextMenuKeyboardInterceptor
+    extends AppFlowyKeyboardServiceInterceptor {
+  @override
+  Future<bool> interceptInsert(
+    TextEditingDeltaInsertion insertion,
+    EditorState editorState,
+    List<CharacterShortcutEvent> characterShortcutEvents,
+  ) async {
+    return true;
+  }
+
+  @override
+  Future<bool> interceptDelete(
+    TextEditingDeltaDeletion deletion,
+    EditorState editorState,
+  ) async {
+    return true;
+  }
+
+  @override
+  Future<bool> interceptReplace(
+    TextEditingDeltaReplacement replacement,
+    EditorState editorState,
+    List<CharacterShortcutEvent> characterShortcutEvents,
+  ) async {
+    return true;
+  }
+
+  @override
+  Future<bool> interceptNonTextUpdate(
+    TextEditingDeltaNonTextUpdate nonTextUpdate,
+    EditorState editorState,
+    List<CharacterShortcutEvent> characterShortcutEvents,
+  ) async {
+    return true;
+  }
+
+  @override
+  Future<bool> interceptPerformAction(
+    TextInputAction action,
+    EditorState editorState,
+  ) async {
+    return true;
   }
 }

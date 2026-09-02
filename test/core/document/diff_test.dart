@@ -23,6 +23,7 @@ void main() async {
         transaction.add(op);
       }
       await editorState.apply(transaction, isRemote: true);
+
       return editorState.document;
     }
 
@@ -38,6 +39,39 @@ void main() async {
       final op = ops.first;
       expect(op, isA<UpdateOperation>());
       expect((op as UpdateOperation).path, [0]);
+
+      final expectation = jsonEncode(documentB.toJson());
+      expect(
+        jsonEncode((await apply(documentA, ops)).toJson()),
+        expectation,
+      );
+    });
+
+    test('same id type changes', () async {
+      final id = nanoid(6);
+      final documentA = Document.blank()
+        ..insert([0], [buildNodeWithId(id, 'Hello World')]);
+      final documentB = Document.blank()
+        ..insert([
+          0,
+        ], [
+          Node(
+            type: HeadingBlockKeys.type,
+            id: id,
+            attributes: {
+              HeadingBlockKeys.level: 1,
+              HeadingBlockKeys.delta: (Delta()..insert('Hello World')).toJson(),
+            },
+          ),
+        ]);
+
+      final ops = diffDocuments(documentA, documentB);
+      expect(ops.length, 1);
+      final op = ops.first;
+      expect(op, isA<UpdateNodeTypeOperation>());
+      expect((op as UpdateNodeTypeOperation).nodeId, id);
+      expect(op.path, [0]);
+      expect(op.type, HeadingBlockKeys.type);
 
       final expectation = jsonEncode(documentB.toJson());
       expect(

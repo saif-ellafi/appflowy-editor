@@ -36,14 +36,18 @@ class DeltaTextInputService extends TextInputService with DeltaTextInputClient {
       switch (delta) {
         case TextEditingDeltaInsertion _:
           if (!(await onInsert(delta))) willApply = false;
+
         case TextEditingDeltaDeletion _:
           if (!(await onDelete(delta))) willApply = false;
+
         case TextEditingDeltaReplacement _:
           if (!(await onReplace(delta))) willApply = false;
+
         case TextEditingDeltaNonTextUpdate _:
           if (!(await onNonTextUpdate(delta))) willApply = false;
       }
     }
+
     return willApply;
   }
 
@@ -132,6 +136,8 @@ class DeltaTextInputService extends TextInputService with DeltaTextInputClient {
     TextInputControl? oldControl,
     TextInputControl? newControl,
   ) {}
+
+  bool onFocusReceived() => false;
 
   @override
   void performSelector(String selectorName) {
@@ -284,6 +290,7 @@ extension on String {
     if (shiftAmount > length) {
       return '';
     }
+
     return substring(shiftAmount);
   }
 }

@@ -22,6 +22,7 @@ Node quoteNode({
   Iterable<Node>? children,
 }) {
   attributes ??= {'delta': (delta ?? Delta()).toJson()};
+
   return Node(
     type: QuoteBlockKeys.type,
     attributes: {
@@ -43,6 +44,7 @@ class QuoteBlockComponentBuilder extends BlockComponentBuilder {
   @override
   BlockComponentWidget build(BlockComponentContext blockComponentContext) {
     final node = blockComponentContext.node;
+
     return QuoteBlockComponentWidget(
       key: node.key,
       node: node,
@@ -122,7 +124,6 @@ class _QuoteBlockComponentWidgetState extends State<QuoteBlockComponentWidget>
       child: IntrinsicHeight(
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
-          mainAxisAlignment: MainAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           textDirection: textDirection,
           children: [
@@ -156,12 +157,10 @@ class _QuoteBlockComponentWidgetState extends State<QuoteBlockComponentWidget>
     );
 
     child = Container(
-      color: backgroundColor,
-      child: Padding(
-        key: blockComponentKey,
-        padding: padding,
-        child: child,
-      ),
+      decoration: decoration,
+      key: blockComponentKey,
+      padding: padding,
+      child: child,
     );
 
     child = BlockSelectionContainer(
@@ -185,6 +184,11 @@ class _QuoteBlockComponentWidgetState extends State<QuoteBlockComponentWidget>
       );
     }
 
+    child = Padding(
+      padding: margin,
+      child: child,
+    );
+
     return child;
   }
 }
@@ -196,6 +200,7 @@ class _QuoteIcon extends StatelessWidget {
   Widget build(BuildContext context) {
     final textScaleFactor =
         context.read<EditorState>().editorStyle.textScaleFactor;
+
     return Container(
       alignment: Alignment.center,
       constraints:

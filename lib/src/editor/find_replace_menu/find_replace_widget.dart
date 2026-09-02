@@ -67,9 +67,14 @@ class _FindAndReplaceMenuWidgetState extends State<FindAndReplaceMenuWidget> {
   }
 
   @override
+  void dispose() {
+    searchService.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Column(
-      mainAxisAlignment: MainAxisAlignment.start,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
@@ -187,11 +192,12 @@ class _FindMenuState extends State<FindMenu> {
 
   @override
   void dispose() {
-    widget.searchService.matchWrappers.removeListener(_setState);
-    widget.searchService.currentSelectedIndex.removeListener(_setState);
-    widget.searchService.dispose();
+    findTextFieldFocusNode.dispose();
     findTextEditingController.removeListener(_searchPattern);
     findTextEditingController.dispose();
+
+    widget.searchService.matchWrappers.removeListener(_setState);
+    widget.searchService.currentSelectedIndex.removeListener(_setState);
 
     super.dispose();
   }
@@ -201,6 +207,7 @@ class _FindMenuState extends State<FindMenu> {
     // the selectedIndex from searchService is 0-based
     final selectedIndex = widget.searchService.selectedIndex + 1;
     final matches = widget.searchService.matchWrappers.value;
+
     return Row(
       children: [
         // expand/collapse button
@@ -348,8 +355,10 @@ class _FindMenuState extends State<FindMenu> {
     switch (error) {
       case 'Regex':
         message = AppFlowyEditorLocalizations.current.regexError;
+
       case 'Empty':
         message = AppFlowyEditorLocalizations.current.emptySearchBoxHint;
+
       default:
         message = widget.localizations?.noResult ??
             AppFlowyEditorLocalizations.current.noFindResult;
@@ -387,6 +396,13 @@ class _ReplaceMenuState extends State<ReplaceMenu> {
   final replaceTextEditingController = TextEditingController();
 
   @override
+  void dispose() {
+    replaceTextFieldFocusNode.dispose();
+    replaceTextEditingController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Row(
       children: [
@@ -400,7 +416,6 @@ class _ReplaceMenuState extends State<ReplaceMenu> {
           child: TextField(
             key: const Key('replaceTextField'),
             focusNode: replaceTextFieldFocusNode,
-            autofocus: false,
             controller: replaceTextEditingController,
             onSubmitted: (_) {
               _replaceSelectedWord();
