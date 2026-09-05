@@ -52,5 +52,18 @@ void main() {
         isNull,
       );
     });
+
+    test('uses a larger bottom edge when the keyboard overlaps the viewport', () {
+      const caret = Rect.fromLTWH(16, 500, 2, 20);
+      expect(
+        computeSelectionVisibleScrollDelta(
+          localSelection: caret,
+          viewportSize: viewport,
+          edgeOffset: 20,
+          bottomEdgeOffset: 120,
+        ),
+        caret.bottom - (viewport.height - 120),
+      );
+    });
   });
 }
