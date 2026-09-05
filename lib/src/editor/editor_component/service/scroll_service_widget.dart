@@ -22,6 +22,7 @@ class ScrollServiceWidget extends StatefulWidget {
 }
 
 class _ScrollServiceWidgetState extends State<ScrollServiceWidget>
+    with WidgetsBindingObserver
     implements AppFlowyScrollService {
   final _forwardKey =
       GlobalKey(debugLabel: 'forward_to_platform_scroll_service');
@@ -34,18 +35,39 @@ class _ScrollServiceWidgetState extends State<ScrollServiceWidget>
   late ScrollController scrollController = ScrollController();
 
   Selection? lastSelection;
+  double _lastViewInsetsBottom = 0;
 
   @override
   void initState() {
     super.initState();
     editorState.selectionNotifier.addListener(_onSelectionChanged);
+    WidgetsBinding.instance.addObserver(this);
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     scrollController.dispose();
     editorState.selectionNotifier.removeListener(_onSelectionChanged);
     super.dispose();
+  }
+
+  @override
+  void didChangeMetrics() {
+    if (!PlatformExtension.isMobile) {
+      return;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
+      final keyboardGrew = bottomInset > _lastViewInsetsBottom + 1.0;
+      _lastViewInsetsBottom = bottomInset;
+      if (keyboardGrew) {
+        _ensureSelectionVisible();
+      }
+    });
   }
 
   @override
@@ -176,14 +198,22 @@ class _ScrollServiceWidgetState extends State<ScrollServiceWidget>
           if (_forwardKey.currentContext == null) {
             return;
           }
-          // Mobile needs to continuously update scroll position/direction during drag
-          // Don't skip even if already scrolling, because direction may have changed
-          startAutoScroll(
-            endTouchPoint,
-            edgeOffset: editorState.autoScrollEdgeOffset,
-            direction: direction,
-            duration: scrollDuration,
-          );
+          if (isDragOperation) {
+            // Mobile needs to continuously update scroll position/direction
+            // during drag. Don't skip even if already scrolling, because
+            // direction may have changed.
+            startAutoScroll(
+              endTouchPoint,
+              edgeOffset: editorState.autoScrollEdgeOffset,
+              direction: direction,
+              duration: scrollDuration,
+            );
+            return;
+          }
+          // Edge-dragging only nudges a few pixels per tick and does not
+          // continue after a tap. After the soft keyboard resizes the
+          // viewport, jump the caret fully back into view.
+          _ensureSelectionVisible();
         });
       } else {
         if (_forwardKey.currentContext == null) {
@@ -260,4 +290,66 @@ class _ScrollServiceWidgetState extends State<ScrollServiceWidget>
 
   @override
   void goBallistic(double velocity) => forward.goBallistic(velocity);
+
+  void _ensureSelectionVisible() {
+    if (editorState.disableAutoScroll) {
+      return;
+    }
+    final selectionRects = editorState.selectionRects();
+    if (selectionRects.isEmpty) {
+      return;
+    }
+    final scrollBox = editorState.renderBox;
+    if (scrollBox == null || !scrollBox.hasSize) {
+      return;
+    }
+
+    final targetRect = selectionRects.last;
+    final localSelection = Rect.fromPoints(
+      scrollBox.globalToLocal(targetRect.topLeft),
+      scrollBox.globalToLocal(targetRect.bottomRight),
+    );
+    final delta = computeSelectionVisibleScrollDelta(
+      localSelection: localSelection,
+      viewportSize: scrollBox.size,
+      edgeOffset: editorState.autoScrollEdgeOffset,
+    );
+    if (delta == null || delta == 0) {
+      return;
+    }
+
+    final targetOffset =
+        widget.editorScrollController.offsetNotifier.value + delta;
+    widget.editorScrollController.animateTo(
+      offset: targetOffset,
+      duration: Duration.zero,
+    );
+  }
+}
+
+/// How far to scroll so [localSelection] stays inside the viewport.
+///
+/// [localSelection] is in the scrollable viewport's local coordinates.
+/// Positive scrolls down; negative scrolls up. Returns null if already visible.
+double? computeSelectionVisibleScrollDelta({
+  required Rect localSelection,
+  required Size viewportSize,
+  double edgeOffset = 0,
+}) {
+  if (viewportSize.height <= 0) {
+    return null;
+  }
+
+  final visibleTop = edgeOffset;
+  final visibleBottom = viewportSize.height - edgeOffset;
+  if (visibleBottom <= visibleTop) {
+    return localSelection.center.dy - viewportSize.height / 2;
+  }
+  if (localSelection.bottom > visibleBottom) {
+    return localSelection.bottom - visibleBottom;
+  }
+  if (localSelection.top < visibleTop) {
+    return localSelection.top - visibleTop;
+  }
+  return null;
 }
