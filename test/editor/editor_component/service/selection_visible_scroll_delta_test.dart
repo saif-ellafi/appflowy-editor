@@ -77,6 +77,17 @@ void main() {
         20 + appFlowyEditorKeyboardCaretGap,
       );
     });
+
+    test('keyboard clearance includes measured keyboard overlap', () {
+      expect(
+        keyboardBottomScrollClearance(
+          edgeOffset: 20,
+          keyboardInset: 300,
+          keyboardOverlap: 100,
+        ),
+        20 + appFlowyEditorKeyboardCaretGap + 100,
+      );
+    });
   });
 
   testWidgets('last line reaches requested keyboard clearance', (tester) async {
@@ -156,6 +167,126 @@ void main() {
       isNull,
       reason: 'The requested ${clearance}px clearance must be reachable '
           'at the end of the document',
+    );
+  });
+
+  testWidgets('last line reaches clearance with keyboard overlap',
+      (tester) async {
+    final items = ItemScrollController();
+    final offsets = ScrollOffsetController();
+    const viewportKey = ValueKey('viewport');
+    const caretKey = ValueKey('caret');
+    const edgeOffset = 20.0;
+    const overlap = 100.0;
+    final clearance = keyboardBottomScrollClearance(
+      edgeOffset: edgeOffset,
+      keyboardInset: 300,
+      keyboardOverlap: overlap,
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: SizedBox(
+              key: viewportKey,
+              width: 400,
+              height: 300,
+              child: ScrollablePositionedList.builder(
+                itemScrollController: items,
+                scrollOffsetController: offsets,
+                itemCount: 31,
+                itemBuilder: (_, index) {
+                  if (index == 30) {
+                    return SizedBox(height: clearance);
+                  }
+                  return SizedBox(
+                    height: 40,
+                    child: Align(
+                      alignment: Alignment.bottomLeft,
+                      child: SizedBox(
+                        key: index == 29 ? caretKey : null,
+                        width: 2,
+                        height: 20,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    items.jumpTo(index: 29);
+    await tester.pump();
+
+    double? delta() {
+      final box = tester.getRect(find.byKey(viewportKey));
+      final caret = tester.getRect(find.byKey(caretKey)).shift(-box.topLeft);
+      return computeSelectionVisibleScrollDelta(
+        localSelection: caret,
+        viewportSize: box.size,
+        edgeOffset: edgeOffset,
+        bottomEdgeOffset: clearance,
+      );
+    }
+
+    for (var attempt = 0; attempt < 3; attempt++) {
+      final distance = delta();
+      if (distance == null) {
+        break;
+      }
+      offsets.animateScroll(
+        offset: distance,
+        duration: const Duration(milliseconds: 100),
+        curve: Curves.easeOut,
+      );
+      await tester.pump(const Duration(milliseconds: 120));
+    }
+    expect(
+      delta(),
+      isNull,
+      reason: 'The requested gap plus ${overlap}px overlap must be reachable '
+          'at the end of the document',
+    );
+  });
+
+  testWidgets('keyboardViewportOverlap is the covered portion of the viewport',
+      (tester) async {
+    const viewportKey = ValueKey('viewport');
+    const screenSize = Size(800, 600);
+    tester.view.physicalSize = screenSize;
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      const Directionality(
+        textDirection: TextDirection.ltr,
+        child: Align(
+          alignment: Alignment.bottomCenter,
+          child: SizedBox(key: viewportKey, width: 400, height: 300),
+        ),
+      ),
+    );
+    final box = tester.renderObject<RenderBox>(find.byKey(viewportKey));
+    expect(
+      keyboardViewportOverlap(
+        viewport: box,
+        screenSize: screenSize,
+        keyboardInset: 200,
+      ),
+      200,
+    );
+    expect(
+      keyboardViewportOverlap(
+        viewport: box,
+        screenSize: screenSize,
+        keyboardInset: 0,
+      ),
+      0,
     );
   });
 }

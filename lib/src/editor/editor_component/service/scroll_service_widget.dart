@@ -317,10 +317,14 @@ class _ScrollServiceWidgetState extends State<ScrollServiceWidget>
     final keyboardInset = MediaQuery.viewInsetsOf(context).bottom;
     final edge = editorState.autoScrollEdgeOffset;
     final bottomEdge = keyboardBottomScrollClearance(
-          edgeOffset: edge,
-          keyboardInset: keyboardInset,
-        ) +
-        _obscuredBottom(scrollBox);
+      edgeOffset: edge,
+      keyboardInset: keyboardInset,
+      keyboardOverlap: keyboardViewportOverlap(
+        viewport: scrollBox,
+        screenSize: MediaQuery.sizeOf(context),
+        keyboardInset: keyboardInset,
+      ),
+    );
     final delta = computeSelectionVisibleScrollDelta(
       localSelection: localSelection,
       viewportSize: scrollBox.size,
@@ -348,19 +352,6 @@ class _ScrollServiceWidgetState extends State<ScrollServiceWidget>
         _ensureSelectionVisible(attempt: 1);
       });
     }
-  }
-
-  /// How much of [scrollBox] sits under the software keyboard, in local px.
-  double _obscuredBottom(RenderBox scrollBox) {
-    final insets = MediaQuery.viewInsetsOf(context).bottom;
-    if (insets <= 0) {
-      return 0;
-    }
-    final boxBottom =
-        scrollBox.localToGlobal(Offset(0, scrollBox.size.height)).dy;
-    final keyboardTop = MediaQuery.sizeOf(context).height - insets;
-    final covered = boxBottom - keyboardTop;
-    return covered > 0 ? covered : 0;
   }
 
   Future<void> _scrollBy(double delta, {required bool animate}) {
@@ -399,15 +390,35 @@ class _ScrollServiceWidgetState extends State<ScrollServiceWidget>
 /// Extra list extent below the last line while the IME is visible.
 const double appFlowyEditorKeyboardCaretGap = 32.0;
 
+/// How much of [viewport] sits under the software keyboard, in local px.
+double keyboardViewportOverlap({
+  required RenderBox viewport,
+  required Size screenSize,
+  required double keyboardInset,
+}) {
+  if (keyboardInset <= 0 || !viewport.hasSize) {
+    return 0;
+  }
+  final boxBottom =
+      viewport.localToGlobal(Offset(0, viewport.size.height)).dy;
+  final keyboardTop = screenSize.height - keyboardInset;
+  final covered = boxBottom - keyboardTop;
+  return covered > 0 ? covered : 0;
+}
+
 /// Real bottom spacer height so the last line can sit above the keyboard.
+///
+/// Includes [keyboardOverlap] when the editor viewport is not fully resized
+/// above the IME; a fixed pad cannot substitute for that measured amount.
 double keyboardBottomScrollClearance({
   required double edgeOffset,
   required double keyboardInset,
+  double keyboardOverlap = 0,
 }) {
   if (keyboardInset <= 0) {
     return 0;
   }
-  return edgeOffset + appFlowyEditorKeyboardCaretGap;
+  return edgeOffset + appFlowyEditorKeyboardCaretGap + keyboardOverlap;
 }
 
 /// How far to scroll so [localSelection] stays inside the viewport.

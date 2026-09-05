@@ -149,11 +149,20 @@ class PageBlockComponent extends BlockComponentStatelessWidget {
   }
 
   Widget _keyboardClearance(BuildContext context, EditorState editorState) {
+    final keyboardInset = MediaQuery.viewInsetsOf(context).bottom;
+    final viewport = editorState.renderBox;
     return IgnoreEditorSelectionGesture(
       child: SizedBox(
         height: keyboardBottomScrollClearance(
           edgeOffset: editorState.autoScrollEdgeOffset,
-          keyboardInset: MediaQuery.viewInsetsOf(context).bottom,
+          keyboardInset: keyboardInset,
+          keyboardOverlap: viewport == null
+              ? 0
+              : keyboardViewportOverlap(
+                  viewport: viewport,
+                  screenSize: MediaQuery.sizeOf(context),
+                  keyboardInset: keyboardInset,
+                ),
         ),
       ),
     );
