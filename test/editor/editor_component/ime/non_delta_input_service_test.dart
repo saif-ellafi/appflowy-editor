@@ -244,5 +244,52 @@ void main() {
     await tester.pump();
     expect(inputService.attached, isTrue);
     expect(tester.testTextInput.hasAnyClients, isTrue);
+    expect(tester.testTextInput.isVisible, isTrue);
+  });
+
+  testWidgets('new connection receives editing state even at same caret',
+      (tester) async {
+    final inputService = NonDeltaTextInputService(
+      onInsert: (_) async => true,
+      onDelete: (_) async => true,
+      onReplace: (_) async => true,
+      onNonTextUpdate: (_) async => true,
+      onPerformAction: (_) async {},
+    );
+    addTearDown(inputService.close);
+
+    const value = TextEditingValue(
+      text: 'hello',
+      selection: TextSelection.collapsed(offset: 5),
+    );
+    inputService.attach(value, const TextInputConfiguration());
+    await tester.pump();
+
+    final other = NonDeltaTextInputService(
+      onInsert: (_) async => true,
+      onDelete: (_) async => true,
+      onReplace: (_) async => true,
+      onNonTextUpdate: (_) async => true,
+      onPerformAction: (_) async {},
+    );
+    addTearDown(other.close);
+    other.attach(
+      const TextEditingValue(
+        text: 'other',
+        selection: TextSelection.collapsed(offset: 5),
+      ),
+      const TextInputConfiguration(),
+    );
+    await tester.pump();
+    expect(inputService.attached, isFalse);
+
+    tester.testTextInput.log.clear();
+    inputService.attach(value, const TextInputConfiguration());
+    await tester.pump();
+    expect(inputService.attached, isTrue);
+    expect(
+      tester.testTextInput.log.map((call) => call.method),
+      contains('TextInput.setEditingState'),
+    );
   });
 }

@@ -90,8 +90,9 @@ class NonDeltaTextInputService extends TextInputService with TextInputClient {
       return;
     }
 
-    if (_textInputConnection == null ||
-        _textInputConnection!.attached == false) {
+    final needsNewConnection = _textInputConnection == null ||
+        _textInputConnection!.attached == false;
+    if (needsNewConnection) {
       _textInputConnection = TextInput.attach(
         this,
         configuration,
@@ -100,11 +101,11 @@ class NonDeltaTextInputService extends TextInputService with TextInputClient {
 
     Debounce.cancel(debounceKey);
 
-    // Dismissing the soft keyboard often leaves the connection attached with
-    // the same editing value. Skip setEditingState in that case (it can
-    // disrupt IME composition) but still call show() so a same-caret tap
-    // brings the keyboard back.
-    if (currentTextEditingValue != formattedValue) {
+    // A replacement connection (another client stole the IME) must receive
+    // the current value. An already-attached connection can skip an
+    // identical setEditingState, which would disrupt composition, but still
+    // needs show() so a same-caret tap brings the keyboard back.
+    if (needsNewConnection || currentTextEditingValue != formattedValue) {
       _textInputConnection!.setEditingState(formattedValue);
       currentTextEditingValue = formattedValue;
     }
@@ -321,7 +322,7 @@ class NonDeltaTextInputService extends TextInputService with TextInputClient {
     }
 
     // solve the issue where the Chinese IME doesn't continue deleting after the input content has been deleted.
-    if (PlatformExtension.isMacOS &&
+    if ((PlatformExtension.isMacOS || PlatformExtension.isIOS) &&
         (composingTextRange?.isCollapsed ?? false)) {
       composingTextRange = TextRange.empty;
     }
