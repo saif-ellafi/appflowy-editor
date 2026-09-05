@@ -1,4 +1,5 @@
 import 'package:appflowy_editor/src/editor/editor_component/service/scroll_service_widget.dart';
+import 'package:appflowy_editor/src/flutter/scrollable_positioned_list/scrollable_positioned_list.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -65,5 +66,96 @@ void main() {
         caret.bottom - (viewport.height - 120),
       );
     });
+
+    test('keyboard clearance is real extent only while the IME is visible', () {
+      expect(
+        keyboardBottomScrollClearance(edgeOffset: 20, keyboardInset: 0),
+        0,
+      );
+      expect(
+        keyboardBottomScrollClearance(edgeOffset: 20, keyboardInset: 300),
+        20 + appFlowyEditorKeyboardCaretGap,
+      );
+    });
+  });
+
+  testWidgets('last line reaches requested keyboard clearance', (tester) async {
+    final items = ItemScrollController();
+    final offsets = ScrollOffsetController();
+    const viewportKey = ValueKey('viewport');
+    const caretKey = ValueKey('caret');
+    const edgeOffset = 20.0;
+    final clearance = keyboardBottomScrollClearance(
+      edgeOffset: edgeOffset,
+      keyboardInset: 300,
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: SizedBox(
+              key: viewportKey,
+              width: 400,
+              height: 300,
+              child: ScrollablePositionedList.builder(
+                itemScrollController: items,
+                scrollOffsetController: offsets,
+                itemCount: 31,
+                itemBuilder: (_, index) {
+                  if (index == 30) {
+                    return SizedBox(height: clearance);
+                  }
+                  return SizedBox(
+                    height: 40,
+                    child: Align(
+                      alignment: Alignment.bottomLeft,
+                      child: SizedBox(
+                        key: index == 29 ? caretKey : null,
+                        width: 2,
+                        height: 20,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    items.jumpTo(index: 29);
+    await tester.pump();
+
+    double? delta() {
+      final box = tester.getRect(find.byKey(viewportKey));
+      final caret = tester.getRect(find.byKey(caretKey)).shift(-box.topLeft);
+      return computeSelectionVisibleScrollDelta(
+        localSelection: caret,
+        viewportSize: box.size,
+        edgeOffset: edgeOffset,
+        bottomEdgeOffset: clearance,
+      );
+    }
+
+    for (var attempt = 0; attempt < 3; attempt++) {
+      final distance = delta();
+      if (distance == null) {
+        break;
+      }
+      offsets.animateScroll(
+        offset: distance,
+        duration: const Duration(milliseconds: 100),
+        curve: Curves.easeOut,
+      );
+      await tester.pump(const Duration(milliseconds: 120));
+    }
+    expect(
+      delta(),
+      isNull,
+      reason: 'The requested ${clearance}px clearance must be reachable '
+          'at the end of the document',
+    );
   });
 }

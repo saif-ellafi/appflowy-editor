@@ -1,5 +1,6 @@
 import 'package:appflowy_editor/appflowy_editor.dart';
 import 'package:appflowy_editor/src/editor/block_component/base_component/widget/ignore_parent_gesture.dart';
+import 'package:appflowy_editor/src/editor/util/platform_extension.dart';
 import 'package:appflowy_editor/src/flutter/scrollable_positioned_list/scrollable_positioned_list.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -85,28 +86,36 @@ class PageBlockComponent extends BlockComponentStatelessWidget {
                   },
                 ),
                 if (footer != null) footer!,
+                if (PlatformExtension.isMobile)
+                  _keyboardClearance(context, editorState),
               ],
             );
           },
         ),
       );
     } else {
-      int extentCount = 0;
-      if (header != null) extentCount++;
-      if (footer != null) extentCount++;
+      final hasHeader = header != null;
+      final hasFooter = footer != null;
+      final hasClearance = PlatformExtension.isMobile;
+      final extentCount =
+          (hasHeader ? 1 : 0) + (hasFooter ? 1 : 0) + (hasClearance ? 1 : 0);
 
       return ScrollablePositionedList.builder(
         shrinkWrap: scrollController.shrinkWrap,
         itemCount: items.length + extentCount,
         itemBuilder: (context, index) {
           editorState.updateAutoScroller(Scrollable.of(context));
-          if (header != null && index == 0) {
+          if (hasHeader && index == 0) {
             return IgnoreEditorSelectionGesture(
               child: header!,
             );
           }
 
-          if (footer != null && index == (items.length - 1) + extentCount) {
+          final lastIndex = items.length + extentCount - 1;
+          if (hasClearance && index == lastIndex) {
+            return _keyboardClearance(context, editorState);
+          }
+          if (hasFooter && index == lastIndex - (hasClearance ? 1 : 0)) {
             return IgnoreEditorSelectionGesture(
               child: footer!,
             );
@@ -137,5 +146,16 @@ class PageBlockComponent extends BlockComponentStatelessWidget {
         scrollOffsetListener: scrollController.scrollOffsetListener,
       );
     }
+  }
+
+  Widget _keyboardClearance(BuildContext context, EditorState editorState) {
+    return IgnoreEditorSelectionGesture(
+      child: SizedBox(
+        height: keyboardBottomScrollClearance(
+          edgeOffset: editorState.autoScrollEdgeOffset,
+          keyboardInset: MediaQuery.viewInsetsOf(context).bottom,
+        ),
+      ),
+    );
   }
 }
