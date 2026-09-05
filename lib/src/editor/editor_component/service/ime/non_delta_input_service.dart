@@ -86,8 +86,7 @@ class NonDeltaTextInputService extends TextInputService with TextInputClient {
       return;
     }
 
-    if (!formattedValue.isValid() ||
-        currentTextEditingValue == formattedValue) {
+    if (!formattedValue.isValid()) {
       return;
     }
 
@@ -101,11 +100,16 @@ class NonDeltaTextInputService extends TextInputService with TextInputClient {
 
     Debounce.cancel(debounceKey);
 
-    _textInputConnection!
-      ..setEditingState(formattedValue)
-      ..show();
+    // Dismissing the soft keyboard often leaves the connection attached with
+    // the same editing value. Skip setEditingState in that case (it can
+    // disrupt IME composition) but still call show() so a same-caret tap
+    // brings the keyboard back.
+    if (currentTextEditingValue != formattedValue) {
+      _textInputConnection!.setEditingState(formattedValue);
+      currentTextEditingValue = formattedValue;
+    }
 
-    currentTextEditingValue = formattedValue;
+    _textInputConnection!.show();
 
     AppFlowyEditorLog.input.debug(
       'attach text editing value: $textEditingValue',
