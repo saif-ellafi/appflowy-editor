@@ -320,10 +320,25 @@ class _ScrollServiceWidgetState extends State<ScrollServiceWidget>
 
     final targetOffset =
         widget.editorScrollController.offsetNotifier.value + delta;
-    widget.editorScrollController.animateTo(
-      offset: targetOffset,
-      duration: Duration.zero,
-    );
+    _jumpToOffset(targetOffset);
+  }
+
+  void _jumpToOffset(double offset) {
+    final controller = widget.editorScrollController;
+    final clamped = offset < 0 ? 0.0 : offset;
+    // animateTo(duration: Duration.zero) asserts in Flutter.
+    if (controller.shrinkWrap) {
+      if (controller.scrollController.hasClients) {
+        controller.scrollController.jumpTo(
+          clamped.clamp(
+            controller.scrollController.position.minScrollExtent,
+            controller.scrollController.position.maxScrollExtent,
+          ),
+        );
+      }
+      return;
+    }
+    controller.scrollOffsetController.jumpTo(offset: clamped);
   }
 }
 
