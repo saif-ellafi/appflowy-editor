@@ -634,6 +634,13 @@ class _MobileSelectionServiceWidgetState
     // if the tap happens on a selection area, don't change the selection
     if (_isClickOnSelectionArea(offset)) {
       appFlowyEditorOnTapSelectionArea.add(0);
+      final selection = editorState.selection;
+      if (selection != null) {
+        // The caret did not move, so selection listeners will not re-attach
+        // the IME. Request it explicitly in case the user dismissed the
+        // keyboard and tapped the same cursor position.
+        editorState.service.keyboardService?.enableKeyBoard(selection);
+      }
 
       return;
     }

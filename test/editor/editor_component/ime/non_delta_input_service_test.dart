@@ -216,4 +216,33 @@ void main() {
     final currentSelection = inputService.currentTextEditingValue?.selection;
     assert(currentSelection?.baseOffset == 100);
   });
+
+  testWidgets('reattach same value still shows the IME', (tester) async {
+    final inputService = NonDeltaTextInputService(
+      onInsert: (_) async => true,
+      onDelete: (_) async => true,
+      onReplace: (_) async => true,
+      onNonTextUpdate: (_) async => true,
+      onPerformAction: (_) async {},
+    );
+    addTearDown(inputService.close);
+
+    const value = TextEditingValue(
+      text: 'hello',
+      selection: TextSelection.collapsed(offset: 5),
+    );
+    inputService.attach(value, const TextInputConfiguration());
+    await tester.pump();
+    expect(inputService.attached, isTrue);
+    expect(tester.testTextInput.hasAnyClients, isTrue);
+
+    tester.testTextInput.hide();
+    await tester.pump();
+
+    // Same caret / same editing value: the IME must still be requested.
+    inputService.attach(value, const TextInputConfiguration());
+    await tester.pump();
+    expect(inputService.attached, isTrue);
+    expect(tester.testTextInput.hasAnyClients, isTrue);
+  });
 }
