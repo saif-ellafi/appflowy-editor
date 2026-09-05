@@ -274,6 +274,12 @@ class EditorScrollController {
       max--;
     }
 
+    // Keyboard clearance (and any other trailing extent) is not content.
+    final lastContent = editorState.document.root.children.length - 1;
+    if (max > lastContent) {
+      max = lastContent;
+    }
+
     // notify the listeners
 
     visibleRangeNotifier.value = (min, max);

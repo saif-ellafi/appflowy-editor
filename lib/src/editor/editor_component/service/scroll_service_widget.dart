@@ -36,6 +36,7 @@ class _ScrollServiceWidgetState extends State<ScrollServiceWidget>
 
   Selection? lastSelection;
   double _lastViewInsetsBottom = 0;
+  int _ensureGeneration = 0;
 
   @override
   void initState() {
@@ -295,6 +296,10 @@ class _ScrollServiceWidgetState extends State<ScrollServiceWidget>
     if (editorState.disableAutoScroll) {
       return;
     }
+    if (attempt == 0) {
+      _ensureGeneration++;
+    }
+    final generation = _ensureGeneration;
     final selectionRects = editorState.selectionRects();
     if (selectionRects.isEmpty) {
       return;
@@ -311,33 +316,36 @@ class _ScrollServiceWidgetState extends State<ScrollServiceWidget>
     );
     final keyboardInset = MediaQuery.viewInsetsOf(context).bottom;
     final edge = editorState.autoScrollEdgeOffset;
-    // Android often leaves the editor box overlapping the IME even with
-    // adjustResize. Subtract that overlap and keep extra padding so the
-    // caret is not flush against the keyboard.
-    final bottomEdge = edge + _obscuredBottom(scrollBox) + (keyboardInset > 0 ? 32.0 : 0.0);
+    final bottomEdge = keyboardBottomScrollClearance(
+          edgeOffset: edge,
+          keyboardInset: keyboardInset,
+        ) +
+        _obscuredBottom(scrollBox);
     final delta = computeSelectionVisibleScrollDelta(
       localSelection: localSelection,
       viewportSize: scrollBox.size,
       edgeOffset: edge,
-      bottomEdgeOffset: bottomEdge,
+      bottomEdgeOffset: bottomEdge > 0 ? bottomEdge : edge,
     );
     if (delta != null && delta.abs() > 0.5) {
-      _scrollBy(delta);
+      final future = _scrollBy(delta, animate: attempt == 0);
       if (attempt < 2) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) {
-            _ensureSelectionVisible(attempt: attempt + 1);
+        future.then((_) {
+          if (!mounted || generation != _ensureGeneration) {
+            return;
           }
+          _ensureSelectionVisible(attempt: attempt + 1);
         });
       }
       return;
     }
-    // Scroll extent can lag the keyboard inset by a frame.
+    // Scroll extent can lag the keyboard inset / footer layout by a frame.
     if (attempt == 0 && keyboardInset > 0) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          _ensureSelectionVisible(attempt: 1);
+        if (!mounted || generation != _ensureGeneration) {
+          return;
         }
+        _ensureSelectionVisible(attempt: 1);
       });
     }
   }
@@ -355,7 +363,7 @@ class _ScrollServiceWidgetState extends State<ScrollServiceWidget>
     return covered > 0 ? covered : 0;
   }
 
-  void _scrollBy(double delta) {
+  Future<void> _scrollBy(double delta, {required bool animate}) {
     final controller = widget.editorScrollController;
     // Relative to the live scroll position. offsetNotifier can desync after
     // a keyboard hide/show; jumping to (staleNotifier + delta) looks like a
@@ -363,26 +371,43 @@ class _ScrollServiceWidgetState extends State<ScrollServiceWidget>
     const duration = Duration(milliseconds: 100);
     if (controller.shrinkWrap) {
       if (!controller.scrollController.hasClients) {
-        return;
+        return Future.value();
       }
       final position = controller.scrollController.position;
       final target = (position.pixels + delta).clamp(
         position.minScrollExtent,
         position.maxScrollExtent,
       );
-      controller.scrollController.animateTo(
+      if (!animate) {
+        controller.scrollController.jumpTo(target);
+        return Future.value();
+      }
+      return controller.scrollController.animateTo(
         target,
         duration: duration,
         curve: Curves.easeOut,
       );
-      return;
     }
-    controller.scrollOffsetController.animateScroll(
+    return controller.scrollOffsetController.animateScroll(
       offset: delta,
-      duration: duration,
+      duration: animate ? duration : const Duration(milliseconds: 1),
       curve: Curves.easeOut,
     );
   }
+}
+
+/// Extra list extent below the last line while the IME is visible.
+const double appFlowyEditorKeyboardCaretGap = 32.0;
+
+/// Real bottom spacer height so the last line can sit above the keyboard.
+double keyboardBottomScrollClearance({
+  required double edgeOffset,
+  required double keyboardInset,
+}) {
+  if (keyboardInset <= 0) {
+    return 0;
+  }
+  return edgeOffset + appFlowyEditorKeyboardCaretGap;
 }
 
 /// How far to scroll so [localSelection] stays inside the viewport.
