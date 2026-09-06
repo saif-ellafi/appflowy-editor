@@ -379,8 +379,20 @@ class _ScrollServiceWidgetState extends State<ScrollServiceWidget>
         curve: Curves.easeOut,
       );
     }
+    final position = editorState.scrollableState?.position;
+    var clampedDelta = delta;
+    if (position != null) {
+      final target = (position.pixels + delta).clamp(
+        position.minScrollExtent,
+        position.maxScrollExtent,
+      );
+      clampedDelta = target - position.pixels;
+      if (clampedDelta.abs() < 0.5) {
+        return Future.value();
+      }
+    }
     return controller.scrollOffsetController.animateScroll(
-      offset: delta,
+      offset: clampedDelta,
       duration: animate ? duration : const Duration(milliseconds: 1),
       curve: Curves.easeOut,
     );

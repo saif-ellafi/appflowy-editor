@@ -281,10 +281,22 @@ class ScrollOffsetController {
     required Duration duration,
     Curve curve = Curves.linear,
   }) async {
-    final currentPosition =
-        _scrollableListState!.primary.scrollController.offset;
-    final newPosition = currentPosition + offset;
-    await _scrollableListState!.primary.scrollController.animateTo(
+    final controller = _scrollableListState?.primary.scrollController;
+    if (controller == null || !controller.hasClients) {
+      return;
+    }
+    final position = controller.position;
+    // animateTo past the extents rubber-bands with BouncingScrollPhysics
+    // and then springs back — the caret-visible path used to do this
+    // when the last line needed more padding than remaining extent.
+    final newPosition = (position.pixels + offset).clamp(
+      position.minScrollExtent,
+      position.maxScrollExtent,
+    );
+    if ((newPosition - position.pixels).abs() < 0.5) {
+      return;
+    }
+    await controller.animateTo(
       newPosition,
       duration: duration,
       curve: curve,
@@ -296,15 +308,35 @@ class ScrollOffsetController {
     required Duration duration,
     Curve curve = Curves.linear,
   }) async {
-    await _scrollableListState!.primary.scrollController.animateTo(
-      offset,
+    final controller = _scrollableListState?.primary.scrollController;
+    if (controller == null || !controller.hasClients) {
+      return;
+    }
+    final position = controller.position;
+    final newPosition = offset.clamp(
+      position.minScrollExtent,
+      position.maxScrollExtent,
+    );
+    if ((newPosition - position.pixels).abs() < 0.5) {
+      return;
+    }
+    await controller.animateTo(
+      newPosition,
       duration: duration,
       curve: curve,
     );
   }
 
-  void jumpTo({required double offset}) =>
-      _scrollableListState!.primary.scrollController.jumpTo(offset);
+  void jumpTo({required double offset}) {
+    final controller = _scrollableListState?.primary.scrollController;
+    if (controller == null || !controller.hasClients) {
+      return;
+    }
+    final position = controller.position;
+    controller.jumpTo(
+      offset.clamp(position.minScrollExtent, position.maxScrollExtent),
+    );
+  }
 
   _ScrollablePositionedListState? _scrollableListState;
 
