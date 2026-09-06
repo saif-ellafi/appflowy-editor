@@ -253,6 +253,47 @@ void main() {
     );
   });
 
+  testWidgets('animateScroll does not overshoot max extent', (tester) async {
+    final items = ItemScrollController();
+    final offsets = ScrollOffsetController();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: SizedBox(
+          width: 400,
+          height: 200,
+          child: ScrollablePositionedList.builder(
+            itemScrollController: items,
+            scrollOffsetController: offsets,
+            itemCount: 8,
+            itemBuilder: (_, index) => SizedBox(
+              height: 40,
+              child: Text('$index'),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    items.jumpTo(index: 7);
+    await tester.pump();
+
+    final position =
+        tester.state<ScrollableState>(find.byType(Scrollable)).position;
+    expect(position.pixels, closeTo(position.maxScrollExtent, 1));
+
+    offsets.animateScroll(
+      offset: 200,
+      duration: const Duration(milliseconds: 100),
+    );
+    await tester.pump(const Duration(milliseconds: 120));
+
+    expect(position.pixels, lessThanOrEqualTo(position.maxScrollExtent + 0.5));
+    expect(
+      position.pixels,
+      greaterThanOrEqualTo(position.minScrollExtent - 0.5),
+    );
+  });
+
   testWidgets('keyboardViewportOverlap is the covered portion of the viewport',
       (tester) async {
     const viewportKey = ValueKey('viewport');
