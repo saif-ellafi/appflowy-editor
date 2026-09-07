@@ -58,7 +58,14 @@ CommandShortcutEventHandler _pasteCommandHandler = (editorState) {
     final data = await AppFlowyClipboard.getData();
     final text = data.text?.replaceAll('\uFFFC', '');
     final html = data.html;
-    if (html != null && html.isNotEmpty) {
+    // Prefer markdown when the plain text is a pipe table and the HTML is
+    // just wrapped lines (Discord, browsers) rather than a real <table>.
+    final preferMarkdownTable = text != null &&
+        text.isNotEmpty &&
+        MarkdownPipeTableNormalizer.containsPipeTable(text) &&
+        !MarkdownPipeTableNormalizer.htmlContainsRealTable(html);
+
+    if (html != null && html.isNotEmpty && !preferMarkdownTable) {
       // if the html is pasted successfully, then return
       // otherwise, paste the plain text
       if (await editorState.pasteHtml(html)) {

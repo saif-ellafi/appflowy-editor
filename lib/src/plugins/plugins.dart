@@ -5,6 +5,7 @@ export 'html/html_document_decoder.dart';
 export 'html/html_document_encoder.dart';
 export 'markdown/decoder/delta_markdown_decoder.dart';
 export 'markdown/decoder/document_markdown_decoder.dart';
+export 'markdown/decoder/markdown_pipe_table_normalizer.dart';
 export 'markdown/decoder/parser/parser.dart';
 export 'markdown/document_markdown.dart';
 export 'markdown/encoder/delta_markdown_encoder.dart';

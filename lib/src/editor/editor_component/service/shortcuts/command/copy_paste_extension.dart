@@ -43,6 +43,13 @@ extension EditorCopyPaste on EditorState {
       if (_listTypes.contains(node.type) && insertedNode.children.isNotEmpty) {
         transaction.insertNodes(node.path + [0], insertedNode.children);
       }
+    } else {
+      // Non-delta blocks (table, image, divider) cannot merge into the current
+      // paragraph; insert them on the next line.
+      transaction.insertNode(selection.end.path.next, insertedNode);
+      transaction.afterSelection = Selection.collapsed(
+        Position(path: selection.end.path.next),
+      );
     }
     await apply(transaction);
   }

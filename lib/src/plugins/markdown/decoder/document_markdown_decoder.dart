@@ -6,6 +6,7 @@ import 'package:collection/collection.dart';
 import 'package:markdown/markdown.dart' as md;
 
 import 'custom_syntaxes/formula_syntax.dart';
+import 'markdown_pipe_table_normalizer.dart';
 
 class DocumentMarkdownDecoder extends Converter<String, Document> {
   DocumentMarkdownDecoder({
@@ -85,7 +86,10 @@ class DocumentMarkdownDecoder extends Converter<String, Document> {
       (match) => '${match[1]}\n\n![${match[2]}](${match[3]})',
     );
 
-    // Add another rules here.
+    // Discord / forum pastes often insert blank lines between markdown table
+    // rows, which GFM treats as the end of the table. Collapse those and
+    // synthesize a delimiter row when the paste omitted one.
+    result = MarkdownPipeTableNormalizer.normalize(result);
 
     return result;
   }

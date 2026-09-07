@@ -380,13 +380,20 @@ void handlePaste(EditorState editorState) async {
 }
 
 void _pasteRichClipboard(EditorState editorState, AppFlowyClipboardData data) {
-  if (data.html != null) {
-    pasteHTML(editorState, data.html!);
+  final text = data.text;
+  final html = data.html;
+  final preferMarkdownTable = text != null &&
+      text.isNotEmpty &&
+      MarkdownPipeTableNormalizer.containsPipeTable(text) &&
+      !MarkdownPipeTableNormalizer.htmlContainsRealTable(html);
+
+  if (html != null && !preferMarkdownTable) {
+    pasteHTML(editorState, html);
 
     return;
   }
-  if (data.text != null) {
-    handlePastePlainText(editorState, data.text!);
+  if (text != null) {
+    handlePastePlainText(editorState, text);
 
     return;
   }
