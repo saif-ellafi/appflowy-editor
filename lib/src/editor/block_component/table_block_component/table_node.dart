@@ -167,6 +167,7 @@ class TableNode {
     double w, {
     Transaction? transaction,
     bool force = false,
+    bool updateRowHeights = true,
   }) {
     w = w < _config.colMinimumWidth ? _config.colMinimumWidth : w;
     if (getColWidth(col) != w || force) {
@@ -176,7 +177,9 @@ class TableNode {
         } else {
           _cells[col][i].updateAttributes({TableCellBlockKeys.width: w});
         }
-        updateRowHeight(i, transaction: transaction);
+        if (updateRowHeights) {
+          updateRowHeight(i, transaction: transaction);
+        }
       }
       if (transaction != null) {
         transaction.updateNode(node, node.attributes);

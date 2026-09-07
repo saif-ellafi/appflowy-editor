@@ -1,5 +1,4 @@
 import 'package:appflowy_editor/appflowy_editor.dart';
-import 'package:appflowy_editor/src/editor/block_component/table_block_component/table_action_handler.dart';
 import 'package:appflowy_editor/src/editor/block_component/table_block_component/util.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -100,66 +99,37 @@ class TableCelBlockWidget extends BlockComponentStatefulWidget {
 
 class _TableCeBlockWidgetState extends State<TableCelBlockWidget> {
   late final editorState = Provider.of<EditorState>(context, listen: false);
-  bool _rowActionVisibility = false;
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        MouseRegion(
-          onEnter: (_) => setState(() => _rowActionVisibility = true),
-          onExit: (_) => setState(() => _rowActionVisibility = false),
-          child: Container(
-            constraints: BoxConstraints(
-              minHeight: context.select((Node n) => n.cellHeight),
+    final col = widget.node.attributes[TableCellBlockKeys.colPosition] as int? ?? 0;
+    return Container(
+      constraints: BoxConstraints(
+        minHeight: context.select((Node n) => n.cellHeight),
+      ),
+      color: context.select(
+        (Node n) =>
+            widget.colorBuilder?.call(context, n) ??
+            (n.attributes[TableCellBlockKeys.colBackgroundColor] as String?)
+                ?.tryToColor() ??
+            (n.attributes[TableCellBlockKeys.rowBackgroundColor] as String?)
+                ?.tryToColor(),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: EdgeInsets.only(
+              left: col == 0 ? tableCellPaddingH + 2 : tableCellPaddingH,
+              right: tableCellPaddingH,
             ),
-            color: context.select(
-              (Node n) =>
-                  widget.colorBuilder?.call(context, n) ??
-                  (n.attributes[TableCellBlockKeys.colBackgroundColor]
-                          as String?)
-                      ?.tryToColor() ??
-                  (n.attributes[TableCellBlockKeys.rowBackgroundColor]
-                          as String?)
-                      ?.tryToColor(),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                  child: editorState.renderer.build(
-                    context,
-                    widget.node.children.first,
-                  ),
-                ),
-              ],
+            child: editorState.renderer.build(
+              context,
+              widget.node.children.first,
             ),
           ),
-        ),
-        TableActionHandler(
-          visible: _rowActionVisibility,
-          node: widget.node.parent!,
-          editorState: editorState,
-          position: widget.node.attributes[TableCellBlockKeys.rowPosition],
-          transform: context.select((Node n) {
-            final int col = n.attributes[TableCellBlockKeys.colPosition];
-            double left = -12;
-            for (var i = 0; i < col; i++) {
-              left -= getCellNode(n.parent!, i, 0)?.cellWidth ??
-                  TableDefaults.colWidth;
-              left -= n.parent!.attributes['borderWidth'] ??
-                  TableDefaults.borderWidth;
-            }
-
-            return Matrix4.translationValues(left, 0.0, 0.0);
-          }),
-          alignment: Alignment.centerLeft,
-          height: context.select((Node n) => n.cellHeight),
-          menuBuilder: widget.menuBuilder,
-          dir: TableDirection.row,
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

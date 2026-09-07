@@ -1,6 +1,6 @@
 import 'package:appflowy_editor/appflowy_editor.dart';
-import 'package:appflowy_editor/src/editor/block_component/table_block_component/table_action_handler.dart';
 import 'package:appflowy_editor/src/editor/block_component/table_block_component/table_col_border.dart';
+import 'package:appflowy_editor/src/editor/block_component/table_block_component/table_interaction.dart';
 import 'package:appflowy_editor/src/editor/block_component/table_block_component/util.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -12,15 +12,11 @@ class TableCol extends StatefulWidget {
     required this.editorState,
     required this.colIdx,
     required this.tableStyle,
-    this.menuBuilder,
   });
 
   final int colIdx;
   final EditorState editorState;
   final TableNode tableNode;
-
-  final TableBlockComponentMenuBuilder? menuBuilder;
-
   final TableStyle tableStyle;
 
   @override
@@ -28,65 +24,49 @@ class TableCol extends StatefulWidget {
 }
 
 class _TableColState extends State<TableCol> {
-  bool _colActionVisiblity = false;
-
   Map<String, void Function()> listeners = {};
 
   @override
   Widget build(BuildContext context) {
+    final interaction = TableInteractionScope.of(context);
+    final storedWidth = context.select(
+      (Node n) => getCellNode(n, widget.colIdx, 0)?.cellWidth,
+    );
+    final width =
+        interaction.previewWidthFor(widget.colIdx) ?? storedWidth;
+
     final List<Widget> children = [];
     if (widget.colIdx == 0) {
       children.add(
         TableColBorder(
-          resizable: false,
+          key: ValueKey('table_col_border_${widget.colIdx}_fixed'),
           tableNode: widget.tableNode,
-          editorState: widget.editorState,
-          colIdx: widget.colIdx,
           borderColor: widget.tableStyle.borderColor,
-          borderHoverColor: widget.tableStyle.borderHoverColor,
         ),
       );
     }
 
     children.addAll([
       SizedBox(
-        width: context.select(
-          (Node n) => getCellNode(n, widget.colIdx, 0)?.cellWidth,
-        ),
-        child: Stack(
-          children: [
-            MouseRegion(
-              onEnter: (_) => setState(() => _colActionVisiblity = true),
-              onExit: (_) => setState(() => _colActionVisiblity = false),
-              child: Column(children: _buildCells(context)),
-            ),
-            TableActionHandler(
-              visible: _colActionVisiblity,
-              node: widget.tableNode.node,
-              editorState: widget.editorState,
-              position: widget.colIdx,
-              transform: Matrix4.translationValues(0.0, -12, 0.0),
-              alignment: Alignment.topCenter,
-              menuBuilder: widget.menuBuilder,
-              dir: TableDirection.col,
-            ),
-          ],
+        width: width,
+        child: Column(
+          children: _buildCells(context, interaction.isResizing),
         ),
       ),
       TableColBorder(
-        resizable: true,
+        key: ValueKey('table_col_border_${widget.colIdx}_resizable'),
         tableNode: widget.tableNode,
-        editorState: widget.editorState,
-        colIdx: widget.colIdx,
         borderColor: widget.tableStyle.borderColor,
-        borderHoverColor: widget.tableStyle.borderHoverColor,
       ),
     ]);
 
-    return Row(children: children);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: children,
+    );
   }
 
-  List<Widget> _buildCells(BuildContext context) {
+  List<Widget> _buildCells(BuildContext context, bool isResizing) {
     final rowsLen = widget.tableNode.rowsLen;
     final List<Widget> cells = [];
     final Widget cellBorder = Container(
@@ -96,7 +76,9 @@ class _TableColState extends State<TableCol> {
 
     for (var i = 0; i < rowsLen; i++) {
       final node = widget.tableNode.getCell(widget.colIdx, i);
-      updateRowHeightCallback(i);
+      if (!isResizing) {
+        updateRowHeightCallback(i);
+      }
       addListener(node, i);
       addListener(node.children.first, i);
 
@@ -120,12 +102,26 @@ class _TableColState extends State<TableCol> {
       return;
     }
 
-    listeners[node.id] = () => updateRowHeightCallback(row);
+    listeners[node.id] = () {
+      if (!mounted) {
+        return;
+      }
+      if (TableInteractionScope.maybeOf(context)?.isResizing ?? false) {
+        return;
+      }
+      updateRowHeightCallback(row);
+    };
     node.addListener(listeners[node.id]!);
   }
 
   void updateRowHeightCallback(int row) =>
       WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) {
+          return;
+        }
+        if (TableInteractionScope.maybeOf(context)?.isResizing ?? false) {
+          return;
+        }
         if (row >= widget.tableNode.rowsLen) {
           return;
         }

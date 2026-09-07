@@ -1,4 +1,5 @@
 import 'package:appflowy_editor/appflowy_editor.dart';
+import 'package:appflowy_editor/src/editor/block_component/table_block_component/table_interaction.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -34,6 +35,13 @@ class TableStyle {
     this.handlerIcon = TableDefaults.handlerIcon,
     this.borderColor = TableDefaults.borderColor,
     this.borderHoverColor = TableDefaults.borderHoverColor,
+    this.handlerColor = TableDefaults.handlerColor,
+    this.handleBackgroundColor = TableDefaults.handleBackgroundColor,
+    this.menuBackgroundColor,
+    this.menuBorderColor,
+    this.menuForegroundColor,
+    this.menuBorderRadius,
+    this.touchLayout = false,
   });
   final double colWidth;
   final double rowHeight;
@@ -43,6 +51,13 @@ class TableStyle {
   final Widget handlerIcon;
   final Color borderColor;
   final Color borderHoverColor;
+  final Color handlerColor;
+  final Color handleBackgroundColor;
+  final Color? menuBackgroundColor;
+  final Color? menuBorderColor;
+  final Color? menuForegroundColor;
+  final BorderRadius? menuBorderRadius;
+  final bool touchLayout;
 }
 
 class TableDefaults {
@@ -56,14 +71,45 @@ class TableDefaults {
 
   static double borderWidth = 2.0;
 
-  static const Widget addIcon = Icon(Icons.add, size: 20);
+  static const Widget addIcon = Icon(Icons.add, size: 16);
 
-  static const Widget handlerIcon = Icon(Icons.drag_indicator);
+  static const Widget handlerIcon = Icon(Icons.drag_handle, size: 12);
 
   static const Color borderColor = Colors.grey;
 
   static const Color borderHoverColor = Colors.blue;
+
+  static const Color handlerColor = Color(0xFF5F6368);
+
+  static const Color handleBackgroundColor = Colors.white;
 }
+
+class TableStyleScope extends InheritedWidget {
+  const TableStyleScope({
+    super.key,
+    required this.style,
+    required super.child,
+  });
+
+  final TableStyle style;
+
+  static TableStyle? maybeOf(BuildContext context) {
+    return context.dependOnInheritedWidgetOfExactType<TableStyleScope>()?.style;
+  }
+
+  static TableStyle of(BuildContext context) {
+    return maybeOf(context) ?? const TableStyle();
+  }
+
+  @override
+  bool updateShouldNotify(TableStyleScope oldWidget) => style != oldWidget.style;
+}
+
+const double tableHandleSize = 20;
+const double tableHandleOvalLength = 22;
+const double tableHandleOvalThickness = 10;
+const double tableCellPaddingH = 8;
+const double tableBorderChrome = 8;
 
 enum TableDirection { row, col }
 
@@ -215,31 +261,105 @@ class _TableBlockComponentWidgetState extends State<TableBlockComponentWidget>
   @override
   Node get node => widget.node;
 
+  static const _scrollbarThickness = 4.0;
+
   late final editorState = Provider.of<EditorState>(context, listen: false);
   final _scrollController = ScrollController();
+  final _interactionController = TableInteractionController();
+  bool _selectionListening = false;
+  MouseCursor _scrollbarHoverCursor = MouseCursor.defer;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_selectionListening) {
+      editorState.selectionNotifier.addListener(_syncTableActive);
+      _selectionListening = true;
+      _syncTableActive();
+    }
+  }
 
   @override
   void dispose() {
+    if (_selectionListening) {
+      editorState.selectionNotifier.removeListener(_syncTableActive);
+    }
+    _interactionController.dispose();
     _scrollController.dispose();
     super.dispose();
   }
 
+  void _syncTableActive() {
+    final selection = editorState.selection;
+    if (selection == null) {
+      _interactionController.setCaret(inTable: false);
+      return;
+    }
+    final selected = editorState.getNodeAtPath(selection.start.path);
+    final inThisTable =
+        selected?.findParent((n) => n.id == node.id) != null;
+    if (!inThisTable) {
+      _interactionController.setCaret(inTable: false);
+      return;
+    }
+    final cell =
+        selected?.findParent((n) => n.type == TableCellBlockKeys.type);
+    _interactionController.setCaret(
+      inTable: true,
+      col: cell?.attributes[TableCellBlockKeys.colPosition] as int?,
+      row: cell?.attributes[TableCellBlockKeys.rowPosition] as int?,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    Widget child = Scrollbar(
-      controller: _scrollController,
-      thumbVisibility: true,
-      trackVisibility: true,
-      scrollbarOrientation: ScrollbarOrientation.top,
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.only(top: 20, left: 10, bottom: 4),
-        controller: _scrollController,
-        scrollDirection: Axis.horizontal,
-        child: TableView(
-          tableNode: widget.tableNode,
-          editorState: editorState,
-          menuBuilder: widget.menuBuilder,
-          tableStyle: widget.tableStyle,
+    Widget child = TableStyleScope(
+      style: widget.tableStyle,
+      child: TableInteractionScope(
+        controller: _interactionController,
+        child: Theme(
+          data: Theme.of(context).copyWith(
+            scrollbarTheme: ScrollbarTheme.of(context).copyWith(
+              thickness: const WidgetStatePropertyAll(_scrollbarThickness),
+              trackVisibility: const WidgetStatePropertyAll(false),
+              trackColor: const WidgetStatePropertyAll(Colors.transparent),
+              trackBorderColor: const WidgetStatePropertyAll(Colors.transparent),
+            ),
+          ),
+          child: MouseRegion(
+            cursor: _scrollbarHoverCursor,
+            onHover: (event) {
+              final next = event.localPosition.dy <= tableBorderChrome
+                  ? SystemMouseCursors.click
+                  : MouseCursor.defer;
+              if (next != _scrollbarHoverCursor) {
+                setState(() => _scrollbarHoverCursor = next);
+              }
+            },
+            onExit: (_) {
+              if (_scrollbarHoverCursor != MouseCursor.defer) {
+                setState(() => _scrollbarHoverCursor = MouseCursor.defer);
+              }
+            },
+            child: Scrollbar(
+              controller: _scrollController,
+              thumbVisibility: true,
+              trackVisibility: false,
+              thickness: _scrollbarThickness,
+              scrollbarOrientation: ScrollbarOrientation.top,
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.only(bottom: 4),
+                controller: _scrollController,
+                scrollDirection: Axis.horizontal,
+                child: TableView(
+                  tableNode: widget.tableNode,
+                  editorState: editorState,
+                  menuBuilder: widget.menuBuilder,
+                  tableStyle: widget.tableStyle,
+                ),
+              ),
+            ),
+          ),
         ),
       ),
     );
