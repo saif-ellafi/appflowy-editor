@@ -102,7 +102,17 @@ class _TableCeBlockWidgetState extends State<TableCelBlockWidget> {
 
   @override
   Widget build(BuildContext context) {
-    final col = widget.node.attributes[TableCellBlockKeys.colPosition] as int? ?? 0;
+    final col =
+        widget.node.attributes[TableCellBlockKeys.colPosition] as int? ?? 0;
+    final row =
+        widget.node.attributes[TableCellBlockKeys.rowPosition] as int? ?? 0;
+    final leftPadding = col == 0
+        ? tableCellPaddingH + tableCellFirstColExtraPadding
+        : tableCellPaddingH;
+    // Mirror first-column oval clearance on the first row / top oval.
+    final topPadding = row == 0
+        ? tableCellPaddingV + tableCellFirstColExtraPadding
+        : tableCellPaddingV;
     return Container(
       constraints: BoxConstraints(
         minHeight: context.select((Node n) => n.cellHeight),
@@ -115,20 +125,20 @@ class _TableCeBlockWidgetState extends State<TableCelBlockWidget> {
             (n.attributes[TableCellBlockKeys.rowBackgroundColor] as String?)
                 ?.tryToColor(),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Padding(
-            padding: EdgeInsets.only(
-              left: col == 0 ? tableCellPaddingH + 2 : tableCellPaddingH,
-              right: tableCellPaddingH,
-            ),
-            child: editorState.renderer.build(
-              context,
-              widget.node.children.first,
-            ),
-          ),
-        ],
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(
+          leftPadding,
+          topPadding,
+          tableCellPaddingH,
+          tableCellPaddingV,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (final child in widget.node.children)
+              editorState.renderer.build(context, child),
+          ],
+        ),
       ),
     );
   }

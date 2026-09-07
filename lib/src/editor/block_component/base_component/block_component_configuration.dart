@@ -100,6 +100,10 @@ mixin BlockComponentConfigurable<T extends StatefulWidget> on State<T> {
 }
 
 EdgeInsets _padding(Node node) {
+  // Cell widget owns the inset so H/V spacing stay matched.
+  if (node.parent?.type == TableCellBlockKeys.type) {
+    return EdgeInsets.zero;
+  }
   return const EdgeInsets.symmetric(vertical: 4.0);
 }
 

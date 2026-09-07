@@ -32,9 +32,14 @@ class _TableActionHandlerState extends State<TableActionHandler> {
     final show =
         (widget.visible || _menuShown) && widget.editorState.editable;
     final horizontal = widget.dir == TableDirection.col;
+    final touch = tableUsesTouchChrome(context);
+    final hitThickness =
+        touch ? tableMobileHandleHitThickness : tableHandleOvalThickness;
+    final hitLength =
+        touch ? tableMobileHandleHitLength : tableHandleOvalLength;
     return SizedBox(
-      width: horizontal ? tableHandleOvalLength : tableHandleOvalThickness,
-      height: horizontal ? tableHandleOvalThickness : tableHandleOvalLength,
+      width: horizontal ? hitLength : hitThickness,
+      height: horizontal ? hitThickness : hitLength,
       child: show
           ? MouseRegion(
               cursor: SystemMouseCursors.click,
@@ -48,6 +53,7 @@ class _TableActionHandlerState extends State<TableActionHandler> {
                       () => setState(() => _menuShown = false),
                     )
                   : GestureDetector(
+                      behavior: HitTestBehavior.opaque,
                       onTap: () => showActionMenu(
                         context,
                         widget.node,
@@ -55,8 +61,10 @@ class _TableActionHandlerState extends State<TableActionHandler> {
                         widget.position,
                         widget.dir,
                       ),
-                      child: TableBorderHandle(
-                        axis: horizontal ? Axis.horizontal : Axis.vertical,
+                      child: Center(
+                        child: TableBorderHandle(
+                          axis: horizontal ? Axis.horizontal : Axis.vertical,
+                        ),
                       ),
                     ),
             )

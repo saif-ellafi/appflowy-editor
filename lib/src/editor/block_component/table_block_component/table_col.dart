@@ -80,7 +80,9 @@ class _TableColState extends State<TableCol> {
         updateRowHeightCallback(i);
       }
       addListener(node, i);
-      addListener(node.children.first, i);
+      for (final child in node.children) {
+        addListener(child, i);
+      }
 
       cells.addAll([
         widget.editorState.renderer.build(

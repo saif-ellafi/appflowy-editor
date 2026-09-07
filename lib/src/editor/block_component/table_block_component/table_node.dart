@@ -194,10 +194,20 @@ class TableNode {
     EditorState? editorState,
     Transaction? transaction,
   }) {
-    // The extra 8 is because of paragraph padding
-    final double maxHeight = _cells
-        .map<double>((c) => c[row].children.first.rect.height + 8)
-        .reduce(max);
+    // Include every block in the cell (mobile IME newline inserts siblings).
+    final double maxHeight = _cells.map<double>((c) {
+      final children = c[row].children;
+      if (children.isEmpty) {
+        return _config.rowDefaultHeight;
+      }
+      final contentHeight = children.fold<double>(
+        0,
+        (sum, child) => sum + child.rect.height,
+      );
+      final verticalInset = tableCellHeightPadding +
+          (row == 0 ? tableCellFirstColExtraPadding : 0);
+      return contentHeight + verticalInset;
+    }).reduce(max);
 
     if (_cells[0][row].attributes[TableCellBlockKeys.height] != maxHeight &&
         !maxHeight.isNaN) {

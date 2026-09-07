@@ -106,10 +106,38 @@ class TableStyleScope extends InheritedWidget {
 }
 
 const double tableHandleSize = 20;
+/// Visible stadium size (kept subtle).
 const double tableHandleOvalLength = 22;
-const double tableHandleOvalThickness = 10;
-const double tableCellPaddingH = 8;
+const double tableHandleOvalThickness = 11;
+/// Touch hit box around the visible oval (Material-ish, without fattening chrome).
+const double tableMobileHandleHitThickness = 36;
+const double tableMobileHandleHitLength = 28;
+const double tableCellPaddingH = 5;
+/// Matches [tableCellPaddingH]; keeps text off the row borders / top oval.
+const double tableCellPaddingV = tableCellPaddingH;
+/// Slight first-column inset so the caret clears the row handle hit box.
+const double tableCellFirstColExtraPadding = 4;
 const double tableBorderChrome = 8;
+/// Vertical cell inset accounted for when measuring row height
+/// (top + bottom; first-row oval clearance is added per-row in [TableNode]).
+const double tableCellHeightPadding = tableCellPaddingV * 2;
+
+bool tableUsesTouchChrome(BuildContext context) {
+  return TableStyleScope.maybeOf(context)?.touchLayout == true ||
+      tableIsTouchLayout(context);
+}
+
+double tableHandleHitThickness(BuildContext context) {
+  return tableUsesTouchChrome(context)
+      ? tableMobileHandleHitThickness
+      : tableHandleOvalThickness;
+}
+
+double tableHandleHitLength(BuildContext context) {
+  return tableUsesTouchChrome(context)
+      ? tableMobileHandleHitLength
+      : tableHandleOvalLength;
+}
 
 enum TableDirection { row, col }
 

@@ -691,10 +691,10 @@ class AppFlowyEditorLocalizations {
     );
   }
 
-  /// `Background Color`
+  /// `Background`
   String get backgroundColor {
     return Intl.message(
-      'Background Color',
+      'Background',
       name: 'backgroundColor',
       desc: '',
       args: [],
@@ -1101,100 +1101,100 @@ class AppFlowyEditorLocalizations {
     );
   }
 
-  /// `Add before`
+  /// `Add left`
   String get colAddBefore {
     return Intl.message(
-      'Add before',
+      'Add left',
       name: 'colAddBefore',
       desc: '',
       args: [],
     );
   }
 
-  /// `Add before`
+  /// `Add above`
   String get rowAddBefore {
     return Intl.message(
-      'Add before',
+      'Add above',
       name: 'rowAddBefore',
       desc: '',
       args: [],
     );
   }
 
-  /// `Add after`
+  /// `Add right`
   String get colAddAfter {
     return Intl.message(
-      'Add after',
+      'Add right',
       name: 'colAddAfter',
       desc: '',
       args: [],
     );
   }
 
-  /// `Add after`
+  /// `Add below`
   String get rowAddAfter {
     return Intl.message(
-      'Add after',
+      'Add below',
       name: 'rowAddAfter',
       desc: '',
       args: [],
     );
   }
 
-  /// `Remove`
+  /// `Delete column`
   String get colRemove {
     return Intl.message(
-      'Remove',
+      'Delete column',
       name: 'colRemove',
       desc: '',
       args: [],
     );
   }
 
-  /// `Remove`
+  /// `Delete row`
   String get rowRemove {
     return Intl.message(
-      'Remove',
+      'Delete row',
       name: 'rowRemove',
       desc: '',
       args: [],
     );
   }
 
-  /// `Duplicate`
+  /// `Duplicate column`
   String get colDuplicate {
     return Intl.message(
-      'Duplicate',
+      'Duplicate column',
       name: 'colDuplicate',
       desc: '',
       args: [],
     );
   }
 
-  /// `Duplicate`
+  /// `Duplicate row`
   String get rowDuplicate {
     return Intl.message(
-      'Duplicate',
+      'Duplicate row',
       name: 'rowDuplicate',
       desc: '',
       args: [],
     );
   }
 
-  /// `Clear Content`
+  /// `Clear column`
   String get colClear {
     return Intl.message(
-      'Clear Content',
+      'Clear column',
       name: 'colClear',
       desc: '',
       args: [],
     );
   }
 
-  /// `Clear Content`
+  /// `Clear row`
   String get rowClear {
     return Intl.message(
-      'Clear Content',
+      'Clear row',
       name: 'rowClear',
       desc: '',
       args: [],

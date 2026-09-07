@@ -123,6 +123,7 @@ class _TableViewState extends State<TableView> {
     final handles = <Widget>[];
     final col = interaction.activeCol;
     final row = interaction.activeRow;
+    final hitThickness = tableHandleHitThickness(context);
 
     if (col != null && col >= 0 && col < widget.tableNode.colsLen) {
       double x = tableBorderChrome + borderWidth;
@@ -136,10 +137,8 @@ class _TableViewState extends State<TableView> {
         Positioned(
           left: x,
           width: width,
-          top: tableBorderChrome +
-              borderWidth / 2 -
-              tableHandleOvalThickness / 2,
-          height: tableHandleOvalThickness,
+          top: tableBorderChrome + borderWidth / 2 - hitThickness / 2,
+          height: hitThickness,
           child: Center(
             child: TableActionHandler(
               key: ValueKey('table_col_menu_$col'),
@@ -162,10 +161,8 @@ class _TableViewState extends State<TableView> {
       }
       handles.add(
         Positioned(
-          left: tableBorderChrome +
-              borderWidth / 2 -
-              tableHandleOvalThickness / 2,
-          width: tableHandleOvalThickness,
+          left: tableBorderChrome + borderWidth / 2 - hitThickness / 2,
+          width: hitThickness,
           top: y,
           height: widget.tableNode.getRowHeight(row),
           child: Center(

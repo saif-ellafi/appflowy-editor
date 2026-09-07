@@ -1,5 +1,6 @@
 import 'package:appflowy_editor/appflowy_editor.dart';
 import 'package:appflowy_editor/src/editor/block_component/table_block_component/table_action_handler.dart';
+import 'package:appflowy_editor/src/editor/block_component/table_block_component/table_action_menu.dart';
 import 'package:appflowy_editor/src/editor/block_component/table_block_component/table_interaction.dart';
 import 'package:appflowy_editor/src/editor/block_component/table_block_component/table_view.dart';
 import 'package:flutter/gestures.dart';
@@ -50,6 +51,31 @@ void main() {
       controller.setActive(false);
       expect(controller.isActive, isFalse);
       expect(controller.activeCol, isNull);
+    });
+  });
+
+  group('table action menu placement', () {
+    test('flips above when keyboard steals space below', () {
+      final placement = debugPlaceTableActionMenu(
+        anchor: const Rect.fromLTWH(20, 500, 24, 14),
+        menuSize: const Size(200, 230),
+        viewport: const Size(400, 800),
+        keyboardInset: 320,
+      );
+      expect(placement.top, isNull);
+      expect(placement.bottom, isNotNull);
+    });
+
+    test('stays below when there is room above the keyboard', () {
+      final placement = debugPlaceTableActionMenu(
+        anchor: const Rect.fromLTWH(20, 80, 24, 14),
+        menuSize: const Size(200, 230),
+        viewport: const Size(400, 800),
+        keyboardInset: 0,
+      );
+      expect(placement.top, isNotNull);
+      expect(placement.bottom, isNull);
+      expect(placement.top, greaterThan(80));
     });
   });
 
@@ -347,6 +373,27 @@ void main() {
       expect(find.byIcon(Icons.add), findsWidgets);
       expect(find.byType(TableBorderHandle), findsNWidgets(2));
       expect(find.byKey(const ValueKey('table_structure_toggle')), findsNothing);
+
+      // Visible oval stays thin; hit box is enlarged for fat fingers.
+      final rowHandle = find.byKey(const ValueKey('table_row_menu_0_0'));
+      expect(tester.getSize(rowHandle).width, tableMobileHandleHitThickness);
+      expect(
+        tester
+            .getSize(
+              find.descendant(
+                of: rowHandle,
+                matching: find.byType(TableBorderHandle),
+              ),
+            )
+            .width,
+        tableHandleOvalThickness,
+      );
+
+      await tester.tap(rowHandle);
+      await tester.pumpAndSettle();
+      // Positional popup near the handle (not a bottom sheet).
+      expect(find.byType(BottomSheet), findsNothing);
+      expect(find.byIcon(Icons.delete), findsOneWidget);
 
       final border = find.byKey(const ValueKey('table_col_border_0_resizable'));
       expect(tester.getSize(border).width, tableNode.config.borderWidth);

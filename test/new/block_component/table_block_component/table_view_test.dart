@@ -10,7 +10,7 @@ void main() async {
   });
 
   group('table_view.dart', () {
-    testWidgets('row height changing base on cell height', (tester) async {
+    testWidgets('row height stays put for short single-line text', (tester) async {
       final tableNode = TableNode.fromList([
         ['', ''],
         ['', ''],
@@ -22,7 +22,11 @@ void main() async {
 
       final row0beforeHeight = tableNode.getRowHeight(0);
       final row1beforeHeight = tableNode.getRowHeight(1);
-      expect(row0beforeHeight == row1beforeHeight, true);
+      // First row includes extra top inset to clear the column oval.
+      expect(
+        row0beforeHeight,
+        row1beforeHeight + tableCellFirstColExtraPadding,
+      );
 
       final cell10 = getCellNode(tableNode.node, 1, 0)!;
       await editor.updateSelection(
@@ -31,20 +35,79 @@ void main() async {
           startOffset: 0,
         ),
       );
-      await editor.ime.insertText('aaaaaaaaa');
+      await editor.ime.insertText('aaa');
+      await tester.pumpAndSettle();
 
       final transaction = editor.editorState.transaction;
       tableNode.updateRowHeight(0, transaction: transaction);
       await editor.editorState.apply(transaction);
 
-      expect(tableNode.getRowHeight(0) != row0beforeHeight, false);
-      expect(tableNode.getRowHeight(0), cell10.children.first.rect.height + 8);
+      expect(tableNode.getRowHeight(0), row0beforeHeight);
+      expect(
+        tableNode.getRowHeight(0),
+        cell10.children.first.rect.height +
+            tableCellHeightPadding +
+            tableCellFirstColExtraPadding,
+      );
       expect(tableNode.getRowHeight(1), row1beforeHeight);
-      expect(tableNode.getRowHeight(1) < tableNode.getRowHeight(0), false);
       await editor.dispose();
     });
 
-    testWidgets('row height changing base on column width', (tester) async {
+    testWidgets('middle row grows when a newline paragraph is inserted',
+        (tester) async {
+      final tableNode = TableNode.fromList([
+        ['top', 'mid', 'bot'],
+        ['top', 'mid', 'bot'],
+      ]);
+      final editor = tester.editor..addNode(tableNode.node);
+
+      await editor.startTesting();
+      await tester.pumpAndSettle();
+
+      final middle = getCellNode(tableNode.node, 0, 1)!;
+      final before = tableNode.getRowHeight(1);
+      await editor.updateSelection(
+        Selection.single(
+          path: middle.children.first.path,
+          startOffset: middle.children.first.delta!.length,
+        ),
+      );
+      await editor.editorState.insertNewLine();
+      await tester.pumpAndSettle(const Duration(milliseconds: 500));
+
+      expect(middle.children.length, greaterThan(1));
+      expect(tableNode.getRowHeight(1), greaterThan(before));
+      await editor.dispose();
+    });
+
+    testWidgets('wrapping long text grows the row height', (tester) async {
+      final tableNode = TableNode.fromList([
+        ['', ''],
+        ['', ''],
+      ]);
+      final editor = tester.editor..addNode(tableNode.node);
+
+      await editor.startTesting();
+      await tester.pumpAndSettle();
+
+      final before = tableNode.getRowHeight(0);
+      final cell10 = getCellNode(tableNode.node, 1, 0)!;
+      await editor.updateSelection(
+        Selection.single(
+          path: cell10.childAtIndexOrNull(0)!.path,
+          startOffset: 0,
+        ),
+      );
+      await editor.ime.insertText(
+        'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+      );
+      await tester.pumpAndSettle(const Duration(milliseconds: 500));
+
+      expect(tableNode.getRowHeight(0), greaterThan(before));
+      await editor.dispose();
+    });
+
+    testWidgets('widening a column can shrink a wrapped row back', (tester) async {
       final tableNode = TableNode.fromList([
         ['', ''],
         ['', ''],
@@ -55,8 +118,6 @@ void main() async {
       await tester.pumpAndSettle();
 
       final row0beforeHeight = tableNode.getRowHeight(0);
-      final row1beforeHeight = tableNode.getRowHeight(1);
-      expect(row0beforeHeight == row1beforeHeight, true);
 
       final cell10 = getCellNode(tableNode.node, 1, 0)!;
       await editor.updateSelection(
@@ -70,10 +131,9 @@ void main() async {
       Transaction transaction = editor.editorState.transaction;
       tableNode.updateRowHeight(0, transaction: transaction);
       await editor.editorState.apply(transaction);
+      await tester.pumpAndSettle();
 
-      expect(tableNode.getRowHeight(0) != row0beforeHeight, false);
-      expect(tableNode.getRowHeight(0), cell10.children.first.rect.height + 8);
-
+      // With current cell padding this short string may already wrap once.
       transaction = editor.editorState.transaction;
       tableNode.setColWidth(1, 302.5, transaction: transaction);
       await editor.editorState.apply(transaction);

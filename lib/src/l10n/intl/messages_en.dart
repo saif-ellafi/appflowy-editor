@@ -25,7 +25,7 @@ class MessageLookup extends MessageLookupByLibrary {
         "addYourLink": MessageLookupByLibrary.simpleMessage("Add your link"),
         "auto": MessageLookupByLibrary.simpleMessage("Auto"),
         "backgroundColor":
-            MessageLookupByLibrary.simpleMessage("Background Color"),
+            MessageLookupByLibrary.simpleMessage("Background"),
         "backgroundColorBlue":
             MessageLookupByLibrary.simpleMessage("Blue background"),
         "backgroundColorBrown":
@@ -173,11 +173,11 @@ class MessageLookup extends MessageLookupByLibrary {
         "cmdToggleUnderline":
             MessageLookupByLibrary.simpleMessage("toggle underline"),
         "cmdUndo": MessageLookupByLibrary.simpleMessage("undo"),
-        "colAddAfter": MessageLookupByLibrary.simpleMessage("Add after"),
-        "colAddBefore": MessageLookupByLibrary.simpleMessage("Add before"),
-        "colClear": MessageLookupByLibrary.simpleMessage("Clear Content"),
-        "colDuplicate": MessageLookupByLibrary.simpleMessage("Duplicate"),
-        "colRemove": MessageLookupByLibrary.simpleMessage("Remove"),
+        "colAddAfter": MessageLookupByLibrary.simpleMessage("Add right"),
+        "colAddBefore": MessageLookupByLibrary.simpleMessage("Add left"),
+        "colClear": MessageLookupByLibrary.simpleMessage("Clear column"),
+        "colDuplicate": MessageLookupByLibrary.simpleMessage("Duplicate column"),
+        "colRemove": MessageLookupByLibrary.simpleMessage("Delete column"),
         "color": MessageLookupByLibrary.simpleMessage("Color"),
         "copy": MessageLookupByLibrary.simpleMessage("Copy"),
         "copyLink": MessageLookupByLibrary.simpleMessage("Copy link"),
@@ -249,11 +249,11 @@ class MessageLookup extends MessageLookupByLibrary {
         "replaceAll": MessageLookupByLibrary.simpleMessage("Replace all"),
         "resetToDefaultColor":
             MessageLookupByLibrary.simpleMessage("Reset to default color"),
-        "rowAddAfter": MessageLookupByLibrary.simpleMessage("Add after"),
-        "rowAddBefore": MessageLookupByLibrary.simpleMessage("Add before"),
-        "rowClear": MessageLookupByLibrary.simpleMessage("Clear Content"),
-        "rowDuplicate": MessageLookupByLibrary.simpleMessage("Duplicate"),
-        "rowRemove": MessageLookupByLibrary.simpleMessage("Remove"),
+        "rowAddAfter": MessageLookupByLibrary.simpleMessage("Add below"),
+        "rowAddBefore": MessageLookupByLibrary.simpleMessage("Add above"),
+        "rowClear": MessageLookupByLibrary.simpleMessage("Clear row"),
+        "rowDuplicate": MessageLookupByLibrary.simpleMessage("Duplicate row"),
+        "rowRemove": MessageLookupByLibrary.simpleMessage("Delete row"),
         "rtl": MessageLookupByLibrary.simpleMessage("RTL"),
         "slashPlaceHolder": MessageLookupByLibrary.simpleMessage(
             "Enter a / to insert a block, or start typing"),
