@@ -56,6 +56,77 @@ void main() {
       expect(twice, once);
     });
 
+    test('does not merge two tables separated by blank lines', () {
+      const twoTables = '''
+| A | B |
+| --- | --- |
+| 1 | 2 |
+
+| C | D |
+| --- | --- |
+| 3 | 4 |
+''';
+      final document = markdownToDocument(twoTables);
+      final tables = document.root.children
+          .where((node) => node.type == TableBlockKeys.type)
+          .toList();
+      expect(tables, hasLength(2));
+      expect(tables[0].attributes['rowsLen'], 2);
+      expect(tables[1].attributes['rowsLen'], 2);
+    });
+
+    test('does not treat a shorter closing fence as a closer', () {
+      const fenced = '''
+````
+| a | b |
+```
+| c | d |
+````
+''';
+      expect(
+        MarkdownPipeTableNormalizer.normalize(fenced).trim(),
+        fenced.trim(),
+      );
+      expect(MarkdownPipeTableNormalizer.containsPipeTable(fenced), isFalse);
+    });
+
+    test('info-string fence lines are not closers', () {
+      const fenced = '''
+```
+| a | b |
+```dart
+| c | d |
+```
+''';
+      expect(
+        MarkdownPipeTableNormalizer.containsPipeTable(fenced),
+        isFalse,
+      );
+    });
+
+    test('isPipeTableOnly is false for mixed prose and a table', () {
+      const mixed = '''
+Skills:
+
+| Skill | Die |
+| --- | --- |
+| Fighting | d8 |
+''';
+      expect(MarkdownPipeTableNormalizer.containsPipeTable(mixed), isTrue);
+      expect(MarkdownPipeTableNormalizer.isPipeTableOnly(mixed), isFalse);
+    });
+
+    test('isPipeTableOnly is true for a Discord-style table paste', () {
+      const messy = '''
+| Skill | Die |
+
+| --- | --- |
+
+| Fighting | d8 |
+''';
+      expect(MarkdownPipeTableNormalizer.isPipeTableOnly(messy), isTrue);
+    });
+
     test('htmlContainsRealTable only matches actual table tags', () {
       expect(
         MarkdownPipeTableNormalizer.htmlContainsRealTable(

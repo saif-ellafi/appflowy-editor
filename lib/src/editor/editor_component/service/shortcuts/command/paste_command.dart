@@ -62,7 +62,7 @@ CommandShortcutEventHandler _pasteCommandHandler = (editorState) {
     // just wrapped lines (Discord, browsers) rather than a real <table>.
     final preferMarkdownTable = text != null &&
         text.isNotEmpty &&
-        MarkdownPipeTableNormalizer.containsPipeTable(text) &&
+        MarkdownPipeTableNormalizer.isPipeTableOnly(text) &&
         !MarkdownPipeTableNormalizer.htmlContainsRealTable(html);
 
     if (html != null && html.isNotEmpty && !preferMarkdownTable) {

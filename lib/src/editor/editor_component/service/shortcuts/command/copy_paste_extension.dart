@@ -21,8 +21,32 @@ extension EditorCopyPaste on EditorState {
     }
     final transaction = this.transaction;
     final insertedDelta = insertedNode.delta;
+
+    if (_isInsideTableCell(node) && insertedDelta == null) {
+      _insertFlattenedDelta(
+        transaction,
+        node,
+        selection,
+        _flattenNodesToDelta([insertedNode]),
+      );
+      await apply(transaction);
+      return;
+    }
+
     // if the node is empty paragraph (default), replace it with the inserted node.
     if (delta.isEmpty && node.type == ParagraphBlockKeys.type) {
+      if (insertedDelta == null) {
+        // Non-delta blocks cannot own the original paragraph's children, and
+        // the table root is not a useful caret target.
+        transaction
+          ..insertNodes(selection.end.path, [insertedNode, paragraphNode()])
+          ..deleteNode(node)
+          ..afterSelection = Selection.collapsed(
+            Position(path: selection.end.path.next),
+          );
+        await apply(transaction);
+        return;
+      }
       final List<Node> combinedChildren = [
         ...insertedNode.children.map((e) => e.deepCopy()),
         // if the original node has children, copy them to the inserted node.
@@ -34,7 +58,7 @@ extension EditorCopyPaste on EditorState {
       transaction.afterSelection = Selection.collapsed(
         Position(
           path: selection.end.path,
-          offset: insertedDelta?.length ?? 0,
+          offset: insertedDelta.length,
         ),
       );
     } else if (insertedDelta != null) {
@@ -44,12 +68,7 @@ extension EditorCopyPaste on EditorState {
         transaction.insertNodes(node.path + [0], insertedNode.children);
       }
     } else {
-      // Non-delta blocks (table, image, divider) cannot merge into the current
-      // paragraph; insert them on the next line.
-      transaction.insertNode(selection.end.path.next, insertedNode);
-      transaction.afterSelection = Selection.collapsed(
-        Position(path: selection.end.path.next),
-      );
+      _insertBlocksAtCaret(transaction, node, selection, [insertedNode]);
     }
     await apply(transaction);
   }
@@ -67,25 +86,13 @@ extension EditorCopyPaste on EditorState {
       return;
     }
 
-    if (node.parent?.type == 'table/cell') {
-      final mergedDelta = Delta();
-      for (int i = 0; i < nodes.length; i++) {
-        final n = nodes[i];
-        if (n.delta != null) {
-          mergedDelta.addAll(n.delta!.toList());
-        }
-        if (i < nodes.length - 1) {
-          mergedDelta.insert('\n');
-        }
-      }
-      
+    if (_isInsideTableCell(node)) {
       final transaction = this.transaction;
-      transaction.insertTextDelta(node, selection.endIndex, mergedDelta);
-      transaction.afterSelection = Selection.collapsed(
-        Position(
-          path: selection.end.path,
-          offset: selection.endIndex + mergedDelta.length,
-        ),
+      _insertFlattenedDelta(
+        transaction,
+        node,
+        selection,
+        _flattenNodesToDelta(nodes),
       );
       await apply(transaction);
       return;
@@ -97,7 +104,7 @@ extension EditorCopyPaste on EditorState {
     //  if so, insert the nodes after the current selection.
     final startWithNonDeltaBlock = nodes.first.delta == null;
     if (startWithNonDeltaBlock) {
-      transaction.insertNodes(node.path.next, nodes);
+      _insertBlocksAtCaret(transaction, node, selection, nodes);
       await apply(transaction);
 
       return;
@@ -193,6 +200,124 @@ extension EditorCopyPaste on EditorState {
 
     return nodes.last.delta?.length ?? 0;
   }
+}
+
+bool _isInsideTableCell(Node node) {
+  Node? current = node.parent;
+  while (current != null) {
+    if (current.type == TableCellBlockKeys.type) {
+      return true;
+    }
+    current = current.parent;
+  }
+  return false;
+}
+
+void _insertFlattenedDelta(
+  Transaction transaction,
+  Node node,
+  Selection selection,
+  Delta flattened,
+) {
+  if (flattened.isEmpty) {
+    return;
+  }
+  transaction.insertTextDelta(node, selection.endIndex, flattened);
+  transaction.afterSelection = Selection.collapsed(
+    Position(
+      path: selection.end.path,
+      offset: selection.endIndex + flattened.length,
+    ),
+  );
+}
+
+void _insertBlocksAtCaret(
+  Transaction transaction,
+  Node node,
+  Selection selection,
+  List<Node> blocks,
+) {
+  final delta = node.delta;
+  if (delta == null) {
+    transaction.insertNodes(node.path.next, blocks);
+    return;
+  }
+
+  final before = delta.slice(0, selection.startIndex);
+  final after = delta.slice(selection.endIndex);
+  final needsTrailingParagraph =
+      after.isNotEmpty || blocks.last.delta == null;
+  final afterNode = paragraphNode(
+    delta: after,
+    children: before.isEmpty
+        ? node.children.map((child) => child.deepCopy()).toList()
+        : const [],
+  );
+  final toInsert = needsTrailingParagraph ? [...blocks, afterNode] : blocks;
+  final caretIndex = needsTrailingParagraph
+      ? blocks.length
+      : blocks.length - 1;
+  final caretOffset =
+      needsTrailingParagraph ? 0 : (blocks.last.delta?.length ?? 0);
+
+  if (before.isEmpty) {
+    transaction
+      ..insertNodes(node.path, toInsert)
+      ..deleteNode(node)
+      ..afterSelection = Selection.collapsed(
+        Position(path: _pathPlus(node.path, caretIndex), offset: caretOffset),
+      );
+  } else {
+    transaction
+      ..updateNode(node, {blockComponentDelta: before.toJson()})
+      ..insertNodes(node.path.next, toInsert)
+      ..afterSelection = Selection.collapsed(
+        Position(
+          path: _pathPlus(node.path, caretIndex + 1),
+          offset: caretOffset,
+        ),
+      );
+  }
+}
+
+Path _pathPlus(Path path, int delta) {
+  if (path.isEmpty) {
+    return [delta];
+  }
+  return [...path.sublist(0, path.length - 1), path.last + delta];
+}
+
+Delta _flattenNodesToDelta(List<Node> nodes) {
+  final delta = Delta();
+  var needsBreak = false;
+  for (final node in nodes) {
+    final piece = _flattenNodeToDelta(node);
+    if (piece.isEmpty) {
+      continue;
+    }
+    if (needsBreak) {
+      delta.insert('\n');
+    }
+    delta.addAll(piece.toList());
+    needsBreak = true;
+  }
+  return delta;
+}
+
+Delta _flattenNodeToDelta(Node node) {
+  if (node.delta != null) {
+    return node.delta!;
+  }
+  if (node.type == TableBlockKeys.type) {
+    final markdown = documentToMarkdown(
+      Document(root: pageNode(children: [node.deepCopy()])),
+    ).trim();
+    if (markdown.isEmpty) {
+      return Delta();
+    }
+    return Delta()..insert(markdown);
+  }
+  return _flattenNodesToDelta(node.children.toList());
 }
 
 extension on Node {

@@ -384,7 +384,7 @@ void _pasteRichClipboard(EditorState editorState, AppFlowyClipboardData data) {
   final html = data.html;
   final preferMarkdownTable = text != null &&
       text.isNotEmpty &&
-      MarkdownPipeTableNormalizer.containsPipeTable(text) &&
+      MarkdownPipeTableNormalizer.isPipeTableOnly(text) &&
       !MarkdownPipeTableNormalizer.htmlContainsRealTable(html);
 
   if (html != null && !preferMarkdownTable) {
