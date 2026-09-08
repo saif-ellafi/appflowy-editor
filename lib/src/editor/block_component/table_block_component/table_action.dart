@@ -369,11 +369,11 @@ void _clearCol(
 
   final rowsLen = tableNode.attributes[TableBlockKeys.rowsLen];
   for (var i = 0; i < rowsLen; i++) {
-    final node = getCellNode(tableNode, col, i)!;
-    transaction.insertNode(
-      node.children.first.path,
-      paragraphNode(text: ''),
-    );
+    final node = getCellNode(tableNode, col, i);
+    if (node == null) {
+      continue;
+    }
+    _clearCellContents(transaction, node);
   }
 
   editorState.apply(transaction, withUpdateSelection: false);
@@ -388,14 +388,25 @@ void _clearRow(
 
   final colsLen = tableNode.attributes[TableBlockKeys.colsLen];
   for (var i = 0; i < colsLen; i++) {
-    final node = getCellNode(tableNode, i, row)!;
-    transaction.insertNode(
-      node.children.first.path,
-      paragraphNode(text: ''),
-    );
+    final node = getCellNode(tableNode, i, row);
+    if (node == null) {
+      continue;
+    }
+    _clearCellContents(transaction, node);
   }
 
   editorState.apply(transaction, withUpdateSelection: false);
+}
+
+/// Replaces a cell's children with a single empty paragraph.
+///
+/// Insert first: a same-path delete-then-insert is transformed to a negative index.
+void _clearCellContents(Transaction transaction, Node cell) {
+  final children = cell.children.toList();
+  transaction.insertNode(cell.path.child(0), paragraphNode());
+  if (children.isNotEmpty) {
+    transaction.deleteNodesAtPath(children.first.path, children.length);
+  }
 }
 
 dynamic newCellNode(Node tableNode, n) {

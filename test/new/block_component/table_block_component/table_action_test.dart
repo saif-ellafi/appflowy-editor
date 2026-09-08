@@ -245,6 +245,128 @@ void main() async {
       await editor.dispose();
     });
 
+    testWidgets('clear column', (tester) async {
+      var tableNode = TableNode.fromList([
+        ['1', '2'],
+        ['3', '4'],
+      ]);
+      final editor = tester.editor..addNode(tableNode.node);
+
+      await editor.startTesting();
+      await tester.pumpAndSettle();
+
+      TableActions.clear(
+        tableNode.node,
+        0,
+        editor.editorState,
+        TableDirection.col,
+      );
+      await tester.pumpAndSettle();
+      tableNode = TableNode(node: tableNode.node);
+
+      expect(tableNode.colsLen, 2);
+      expect(tableNode.rowsLen, 2);
+      expect(tableNode.getCell(0, 0).children.length, 1);
+      expect(
+        tableNode.getCell(0, 0).children.first.toJson(),
+        {
+          "type": "paragraph",
+          "data": {"delta": []},
+        },
+      );
+      expect(
+        tableNode.getCell(0, 1).children.first.toJson(),
+        {
+          "type": "paragraph",
+          "data": {"delta": []},
+        },
+      );
+      expect(
+        tableNode.getCell(1, 0).children.first.toJson(),
+        {
+          "type": "paragraph",
+          "data": {
+            "delta": [
+              {"insert": "3"},
+            ],
+          },
+        },
+      );
+      expect(
+        tableNode.getCell(1, 1).children.first.toJson(),
+        {
+          "type": "paragraph",
+          "data": {
+            "delta": [
+              {"insert": "4"},
+            ],
+          },
+        },
+      );
+      await editor.dispose();
+    });
+
+    testWidgets('clear row', (tester) async {
+      var tableNode = TableNode.fromList([
+        ['1', '2'],
+        ['3', '4'],
+      ]);
+      final editor = tester.editor..addNode(tableNode.node);
+
+      await editor.startTesting();
+      await tester.pumpAndSettle();
+
+      TableActions.clear(
+        tableNode.node,
+        0,
+        editor.editorState,
+        TableDirection.row,
+      );
+      await tester.pumpAndSettle();
+      tableNode = TableNode(node: tableNode.node);
+
+      expect(tableNode.colsLen, 2);
+      expect(tableNode.rowsLen, 2);
+      expect(tableNode.getCell(0, 0).children.length, 1);
+      expect(
+        tableNode.getCell(0, 0).children.first.toJson(),
+        {
+          "type": "paragraph",
+          "data": {"delta": []},
+        },
+      );
+      expect(
+        tableNode.getCell(1, 0).children.first.toJson(),
+        {
+          "type": "paragraph",
+          "data": {"delta": []},
+        },
+      );
+      expect(
+        tableNode.getCell(0, 1).children.first.toJson(),
+        {
+          "type": "paragraph",
+          "data": {
+            "delta": [
+              {"insert": "2"},
+            ],
+          },
+        },
+      );
+      expect(
+        tableNode.getCell(1, 1).children.first.toJson(),
+        {
+          "type": "paragraph",
+          "data": {
+            "delta": [
+              {"insert": "4"},
+            ],
+          },
+        },
+      );
+      await editor.dispose();
+    });
+
     testWidgets('set row bg color', (tester) async {
       final tableNode = TableNode.fromList([
         ['', ''],
