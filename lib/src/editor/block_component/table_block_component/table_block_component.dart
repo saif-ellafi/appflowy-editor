@@ -106,25 +106,33 @@ class TableStyleScope extends InheritedWidget {
 }
 
 const double tableHandleSize = 20;
-/// Visible stadium size (kept subtle).
+/// Visible stadium size (kept subtle on desktop).
 const double tableHandleOvalLength = 22;
 const double tableHandleOvalThickness = 11;
-/// Touch hit box around the visible oval (Material-ish, without fattening chrome).
-const double tableMobileHandleHitThickness = 36;
-const double tableMobileHandleHitLength = 28;
-const double tableCellPaddingH = 5;
-/// Matches [tableCellPaddingH]; keeps text off the row borders / top oval.
-const double tableCellPaddingV = tableCellPaddingH;
-/// Slight first-column inset so the caret clears the row handle hit box.
-const double tableCellFirstColExtraPadding = 4;
+/// Finger-sized stadium on touch; still smaller than the 44px hit box.
+const double tableMobileHandleOvalLength = 32;
+const double tableMobileHandleOvalThickness = 16;
+/// Touch hit box around the visible oval (Material / HIG ~44).
+const double tableMobileHandleHitThickness = 44;
+const double tableMobileHandleHitLength = 44;
+/// Inset so text does not sit on the cell borders or handle ovals.
+const double tableCellPaddingH = 12;
+const double tableCellPaddingV = 8;
 const double tableBorderChrome = 8;
-/// Vertical cell inset accounted for when measuring row height
-/// (top + bottom; first-row oval clearance is added per-row in [TableNode]).
+/// Extra top chrome on touch so the larger horizontal oval is not clipped.
+const double tableMobileTopChrome = 20;
+/// Vertical cell inset accounted for when measuring row height (top + bottom).
 const double tableCellHeightPadding = tableCellPaddingV * 2;
 
 bool tableUsesTouchChrome(BuildContext context) {
   return TableStyleScope.maybeOf(context)?.touchLayout == true ||
       tableIsTouchLayout(context);
+}
+
+double tableTopChrome(BuildContext context) {
+  return tableUsesTouchChrome(context)
+      ? tableMobileTopChrome
+      : tableBorderChrome;
 }
 
 double tableHandleHitThickness(BuildContext context) {
@@ -290,6 +298,7 @@ class _TableBlockComponentWidgetState extends State<TableBlockComponentWidget>
   Node get node => widget.node;
 
   static const _scrollbarThickness = 4.0;
+  static const _desktopScrollbarGutter = 6.0;
 
   late final editorState = Provider.of<EditorState>(context, listen: false);
   final _scrollController = ScrollController();
@@ -341,6 +350,8 @@ class _TableBlockComponentWidgetState extends State<TableBlockComponentWidget>
 
   @override
   Widget build(BuildContext context) {
+    final scrollbarGutter =
+        tableUsesTouchChrome(context) ? 0.0 : _desktopScrollbarGutter;
     Widget child = TableStyleScope(
       style: widget.tableStyle,
       child: TableInteractionScope(
@@ -357,7 +368,8 @@ class _TableBlockComponentWidgetState extends State<TableBlockComponentWidget>
           child: MouseRegion(
             cursor: _scrollbarHoverCursor,
             onHover: (event) {
-              final next = event.localPosition.dy <= tableBorderChrome
+              final next = event.localPosition.dy <=
+                      tableTopChrome(context) + scrollbarGutter
                   ? SystemMouseCursors.click
                   : MouseCursor.defer;
               if (next != _scrollbarHoverCursor) {
@@ -373,10 +385,14 @@ class _TableBlockComponentWidgetState extends State<TableBlockComponentWidget>
               controller: _scrollController,
               thumbVisibility: true,
               trackVisibility: false,
+              interactive: false,
               thickness: _scrollbarThickness,
               scrollbarOrientation: ScrollbarOrientation.top,
               child: SingleChildScrollView(
-                padding: const EdgeInsets.only(bottom: 4),
+                padding: EdgeInsets.only(
+                  top: scrollbarGutter,
+                  bottom: 4,
+                ),
                 controller: _scrollController,
                 scrollDirection: Axis.horizontal,
                 child: TableView(

@@ -277,9 +277,8 @@ class _AppFlowyEditorState extends State<AppFlowyEditor> {
 
     _updateValues();
 
-    if (editorState.service != oldWidget.editorState.service) {
-      editorState.renderer = _renderer;
-    }
+    // Pick up new block builders (table colors, etc.) on rebuild.
+    editorState.renderer = _renderer;
 
     if (widget.editorScrollController != oldWidget.editorScrollController) {
       editorScrollController = widget.editorScrollController ??

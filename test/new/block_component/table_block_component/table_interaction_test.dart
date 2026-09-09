@@ -374,7 +374,7 @@ void main() {
       expect(find.byType(TableBorderHandle), findsNWidgets(2));
       expect(find.byKey(const ValueKey('table_structure_toggle')), findsNothing);
 
-      // Visible oval stays thin; hit box is enlarged for fat fingers.
+      // Visible oval stays compact; hit box is 44px for fat fingers.
       final rowHandle = find.byKey(const ValueKey('table_row_menu_0_0'));
       expect(tester.getSize(rowHandle).width, tableMobileHandleHitThickness);
       expect(
@@ -386,7 +386,19 @@ void main() {
               ),
             )
             .width,
-        tableHandleOvalThickness,
+        tableMobileHandleOvalThickness,
+      );
+      expect(
+        tester.getSize(
+          find.descendant(
+            of: find.byKey(const ValueKey('table_col_menu_0')),
+            matching: find.byType(TableBorderHandle),
+          ),
+        ),
+        const Size(
+          tableMobileHandleOvalLength,
+          tableMobileHandleOvalThickness,
+        ),
       );
 
       await tester.tap(rowHandle);

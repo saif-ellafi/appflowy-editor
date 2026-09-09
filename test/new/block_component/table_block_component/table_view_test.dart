@@ -22,11 +22,7 @@ void main() async {
 
       final row0beforeHeight = tableNode.getRowHeight(0);
       final row1beforeHeight = tableNode.getRowHeight(1);
-      // First row includes extra top inset to clear the column oval.
-      expect(
-        row0beforeHeight,
-        row1beforeHeight + tableCellFirstColExtraPadding,
-      );
+      expect(row0beforeHeight, row1beforeHeight);
 
       final cell10 = getCellNode(tableNode.node, 1, 0)!;
       await editor.updateSelection(
@@ -45,9 +41,7 @@ void main() async {
       expect(tableNode.getRowHeight(0), row0beforeHeight);
       expect(
         tableNode.getRowHeight(0),
-        cell10.children.first.rect.height +
-            tableCellHeightPadding +
-            tableCellFirstColExtraPadding,
+        cell10.children.first.rect.height + tableCellHeightPadding,
       );
       expect(tableNode.getRowHeight(1), row1beforeHeight);
       await editor.dispose();

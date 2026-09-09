@@ -204,9 +204,7 @@ class TableNode {
         0,
         (sum, child) => sum + child.rect.height,
       );
-      final verticalInset = tableCellHeightPadding +
-          (row == 0 ? tableCellFirstColExtraPadding : 0);
-      return contentHeight + verticalInset;
+      return contentHeight + tableCellHeightPadding;
     }).reduce(max);
 
     if (_cells[0][row].attributes[TableCellBlockKeys.height] != maxHeight &&

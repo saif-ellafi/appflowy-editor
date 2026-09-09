@@ -102,17 +102,6 @@ class _TableCeBlockWidgetState extends State<TableCelBlockWidget> {
 
   @override
   Widget build(BuildContext context) {
-    final col =
-        widget.node.attributes[TableCellBlockKeys.colPosition] as int? ?? 0;
-    final row =
-        widget.node.attributes[TableCellBlockKeys.rowPosition] as int? ?? 0;
-    final leftPadding = col == 0
-        ? tableCellPaddingH + tableCellFirstColExtraPadding
-        : tableCellPaddingH;
-    // Mirror first-column oval clearance on the first row / top oval.
-    final topPadding = row == 0
-        ? tableCellPaddingV + tableCellFirstColExtraPadding
-        : tableCellPaddingV;
     return Container(
       constraints: BoxConstraints(
         minHeight: context.select((Node n) => n.cellHeight),
@@ -126,9 +115,9 @@ class _TableCeBlockWidgetState extends State<TableCelBlockWidget> {
                 ?.tryToColor(),
       ),
       child: Padding(
-        padding: EdgeInsets.fromLTRB(
-          leftPadding,
-          topPadding,
+        padding: const EdgeInsets.fromLTRB(
+          tableCellPaddingH,
+          tableCellPaddingV,
           tableCellPaddingH,
           tableCellPaddingV,
         ),

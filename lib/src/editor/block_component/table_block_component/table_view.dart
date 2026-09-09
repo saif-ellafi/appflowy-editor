@@ -35,6 +35,7 @@ class _TableViewState extends State<TableView> {
     final hitWidth = touch
         ? tableMobileResizeHitWidth
         : tableDesktopResizeHitWidth;
+    final topChrome = tableTopChrome(context);
 
     return Column(
       children: [
@@ -42,10 +43,11 @@ class _TableViewState extends State<TableView> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Stack(
+              clipBehavior: Clip.none,
               children: [
                 Padding(
-                  padding: const EdgeInsets.only(
-                    top: tableBorderChrome,
+                  padding: EdgeInsets.only(
+                    top: topChrome,
                     left: tableBorderChrome,
                   ),
                   child: Row(
@@ -54,12 +56,12 @@ class _TableViewState extends State<TableView> {
                   ),
                 ),
                 if (showResize)
-                  ..._buildResizeHandles(interaction, hitWidth),
-                ..._buildBorderHandles(interaction),
+                  ..._buildResizeHandles(interaction, hitWidth, topChrome),
+                ..._buildBorderHandles(interaction, topChrome),
               ],
             ),
             Padding(
-              padding: const EdgeInsets.only(top: tableBorderChrome),
+              padding: EdgeInsets.only(top: topChrome),
               child: TableActionButton(
                 key: const ValueKey('table_add_column'),
                 padding: const EdgeInsets.only(),
@@ -114,7 +116,10 @@ class _TableViewState extends State<TableView> {
     );
   }
 
-  List<Widget> _buildBorderHandles(TableInteractionController interaction) {
+  List<Widget> _buildBorderHandles(
+    TableInteractionController interaction,
+    double topChrome,
+  ) {
     if (!interaction.isActive || !widget.editorState.editable) {
       return const [];
     }
@@ -137,7 +142,7 @@ class _TableViewState extends State<TableView> {
         Positioned(
           left: x,
           width: width,
-          top: tableBorderChrome + borderWidth / 2 - hitThickness / 2,
+          top: topChrome + borderWidth / 2 - hitThickness / 2,
           height: hitThickness,
           child: Center(
             child: TableActionHandler(
@@ -155,7 +160,7 @@ class _TableViewState extends State<TableView> {
     }
 
     if (row != null && row >= 0 && row < widget.tableNode.rowsLen) {
-      double y = tableBorderChrome + borderWidth;
+      double y = topChrome + borderWidth;
       for (var i = 0; i < row; i++) {
         y += widget.tableNode.getRowHeight(i) + borderWidth;
       }
@@ -186,6 +191,7 @@ class _TableViewState extends State<TableView> {
   List<Widget> _buildResizeHandles(
     TableInteractionController interaction,
     double hitWidth,
+    double topChrome,
   ) {
     final borderWidth = widget.tableNode.config.borderWidth;
     final height = context.select(
@@ -201,7 +207,7 @@ class _TableViewState extends State<TableView> {
         Positioned(
           left: x + borderWidth / 2 - hitWidth / 2,
           width: hitWidth,
-          top: tableBorderChrome,
+          top: topChrome,
           height: height,
           child: TableColResizeHandle(
             key: ValueKey('table_col_resize_$i'),

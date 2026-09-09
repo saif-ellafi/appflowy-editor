@@ -241,7 +241,10 @@ void main() async {
       );
 
       final cell12 = getCellNode(tableNode.node, 1, 2)!;
-      expect(tableNode.getRowHeight(2), cell12.children.first.rect.height + 8);
+      expect(
+        tableNode.getRowHeight(2),
+        cell12.children.first.rect.height + tableCellHeightPadding,
+      );
       await editor.dispose();
     });
 

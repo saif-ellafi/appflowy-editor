@@ -62,8 +62,15 @@ class _TableActionHandlerState extends State<TableActionHandler> {
                         widget.dir,
                       ),
                       child: Center(
-                        child: TableBorderHandle(
-                          axis: horizontal ? Axis.horizontal : Axis.vertical,
+                        child: Padding(
+                          padding: horizontal
+                              ? EdgeInsets.zero
+                              : const EdgeInsets.only(top: 2, bottom: 1),
+                          child: TableBorderHandle(
+                            axis: horizontal
+                                ? Axis.horizontal
+                                : Axis.vertical,
+                          ),
                         ),
                       ),
                     ),
@@ -124,8 +131,14 @@ class TableBorderHandle extends StatelessWidget {
   Widget build(BuildContext context) {
     final style = TableStyleScope.of(context);
     final horizontal = axis == Axis.horizontal;
-    final width = horizontal ? tableHandleOvalLength : tableHandleOvalThickness;
-    final height = horizontal ? tableHandleOvalThickness : tableHandleOvalLength;
+    final touch = tableUsesTouchChrome(context);
+    final thickness =
+        touch ? tableMobileHandleOvalThickness : tableHandleOvalThickness;
+    final length =
+        (touch ? tableMobileHandleOvalLength : tableHandleOvalLength) -
+            (horizontal ? 0 : 2);
+    final width = horizontal ? length : thickness;
+    final height = horizontal ? thickness : length;
     return Container(
       width: width,
       height: height,
@@ -161,15 +174,17 @@ class _TableMoreDotsPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()..color = color;
-    const radius = 1.35;
-    const gap = 3.4;
     final cx = size.width / 2;
     final cy = size.height / 2;
     if (axis == Axis.horizontal) {
+      final gap = size.width / 6.5;
+      final radius = size.height / 8;
       canvas.drawCircle(Offset(cx - gap, cy), radius, paint);
       canvas.drawCircle(Offset(cx, cy), radius, paint);
       canvas.drawCircle(Offset(cx + gap, cy), radius, paint);
     } else {
+      final gap = size.height / 6.5;
+      final radius = size.width / 8;
       canvas.drawCircle(Offset(cx, cy - gap), radius, paint);
       canvas.drawCircle(Offset(cx, cy), radius, paint);
       canvas.drawCircle(Offset(cx, cy + gap), radius, paint);
