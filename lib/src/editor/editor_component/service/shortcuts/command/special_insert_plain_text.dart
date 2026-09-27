@@ -23,6 +23,8 @@ String? specialInsertPlainText(Map? attributes) {
   if (rollLink is Map) {
     final formula = rollLink['formula'] ?? '';
     final result = rollLink['result'] ?? '';
+    final label = (rollLink['label']?.toString() ?? '').trim();
+    if (label.isNotEmpty) return '$label [$formula: $result]';
     return '[$formula: $result]';
   }
 

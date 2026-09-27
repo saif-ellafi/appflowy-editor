@@ -13,6 +13,28 @@ void main() {
     expect(flags, [false, true, false, true, false]);
   });
 
+  test('specialInsertPlainText includes dice labels and keeps unlabeled rolls', () {
+    expect(
+      specialInsertPlainText({
+        'rollLink': {
+          'formula': '3d6+1',
+          'result': '12',
+          'label': 'Damage',
+        },
+      }),
+      'Damage [3d6+1: 12]',
+    );
+    expect(
+      specialInsertPlainText({
+        'rollLink': {
+          'formula': '3d6+1',
+          'result': '12',
+        },
+      }),
+      '[3d6+1: 12]',
+    );
+  });
+
   test('specialInsertPlainText labels widget chips including merged checkboxes', () {
     expect(
       specialInsertPlainText({
