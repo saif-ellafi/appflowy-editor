@@ -38,12 +38,16 @@ class TableColResizeHandle extends StatefulWidget {
     required this.editorState,
     required this.colIdx,
     required this.guideColor,
+    this.invertDrag = false,
   });
 
   final int colIdx;
   final TableNode tableNode;
   final EditorState editorState;
   final Color guideColor;
+  /// Left-edge handle: dragging left widens the column, dragging right
+  /// narrows it. Right-edge handles keep the opposite mapping.
+  final bool invertDrag;
 
   @override
   State<TableColResizeHandle> createState() => _TableColResizeHandleState();
@@ -146,7 +150,8 @@ class _TableColResizeHandleState extends State<TableColResizeHandle> {
     if (interaction == null || original == null) {
       return;
     }
-    final next = original + (globalPosition.dx - _startGlobalX);
+    final delta = globalPosition.dx - _startGlobalX;
+    final next = original + (widget.invertDrag ? -delta : delta);
     interaction.updatePreview(
       next,
       minWidth: widget.tableNode.config.colMinimumWidth,

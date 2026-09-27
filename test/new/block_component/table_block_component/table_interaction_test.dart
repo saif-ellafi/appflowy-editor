@@ -91,6 +91,10 @@ void main() {
       await editor.startTesting(platform: TargetPlatform.windows);
       await tester.pumpAndSettle();
 
+      expect(
+        find.byKey(const ValueKey('table_col_resize_leading')),
+        findsOneWidget,
+      );
       expect(find.byKey(const ValueKey('table_col_resize_0')), findsOneWidget);
       expect(find.byKey(const ValueKey('table_col_resize_1')), findsOneWidget);
       expect(
@@ -203,6 +207,34 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(tableNode.getColWidth(0), closeTo(original + 50, 1));
+      await editor.dispose();
+    });
+
+    testWidgets('left table border resizes the first column (inverted drag)',
+        (tester) async {
+      final tableNode = TableNode.fromList([
+        ['a', 'b'],
+        ['c', 'd'],
+      ]);
+      final editor = tester.editor..addNode(tableNode.node);
+      editor.editorState.disableSealTimer = true;
+
+      await editor.startTesting(platform: TargetPlatform.windows);
+      await tester.pumpAndSettle();
+      await activateTable(editor, tableNode);
+
+      final original = tableNode.getColWidth(0);
+      final handle = find.byKey(const ValueKey('table_col_resize_leading'));
+      expect(handle, findsOneWidget);
+
+      await tester.drag(
+        handle,
+        const Offset(-40, 0),
+        kind: PointerDeviceKind.mouse,
+      );
+      await tester.pumpAndSettle();
+
+      expect(tableNode.getColWidth(0), closeTo(original + 40, 1));
       await editor.dispose();
     });
 
@@ -359,6 +391,10 @@ void main() {
       await editor.startTesting(platform: TargetPlatform.android);
       await tester.pumpAndSettle();
 
+      expect(
+        find.byKey(const ValueKey('table_col_resize_leading')),
+        findsOneWidget,
+      );
       expect(find.byKey(const ValueKey('table_col_resize_0')), findsOneWidget);
       expect(find.byKey(const ValueKey('table_col_resize_1')), findsOneWidget);
       expect(

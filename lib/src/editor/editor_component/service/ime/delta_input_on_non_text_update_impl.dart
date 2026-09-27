@@ -67,10 +67,9 @@ Future<bool> handleAndroidNonTextUpdate(
   TextEditingDeltaNonTextUpdate nonTextUpdate,
   EditorState editorState,
 ) async {
-  // on some Android keyboards (e.g. Gboard), they use non-text update to update the selection when moving cursor
-  // by space bar.
-  // for the another keyboards (e.g. system keyboard), they will trigger the
-  // `onFloatingCursor` event instead.
+  // Gboard uses non-text updates for space-bar caret movement and for the
+  // backspace swipe-to-delete gesture (expanding a range, then deleting it).
+  // Other keyboards (e.g. the system keyboard) use `onFloatingCursor` instead.
   AppFlowyEditorLog.input.debug('[Android] onNonTextUpdate: $nonTextUpdate');
 
   final selection = editorState.selection;
@@ -78,37 +77,109 @@ Future<bool> handleAndroidNonTextUpdate(
     return false;
   }
 
-  if (_isSelectAllNonTextUpdate(nonTextUpdate)) {
+  if (_isDocumentSelectAllNonTextUpdate(nonTextUpdate, editorState)) {
     return selectAllCommand.execute(editorState) == KeyEventResult.handled;
   }
 
-  final nonTextUpdateStart = nonTextUpdate.selection.start;
-  final selectionStart = selection.start.offset;
-  if (nonTextUpdateStart != selectionStart) {
-    await editorState.updateSelectionWithReason(
-      Selection.collapsed(
-        Position(
-          path: selection.start.path,
-          offset: nonTextUpdateStart,
-        ),
-      ),
-      reason: SelectionUpdateReason.uiEvent,
-    );
-
-    return true;
+  final imeSelection = nonTextUpdate.selection;
+  if (!imeSelection.isValid) {
+    return false;
   }
 
-  return false;
+  // Multi-block IME text is concatenated, so offsets are not node-local.
+  // Keep the previous caret-only sync in that case.
+  if (!selection.isSingle) {
+    if (imeSelection.isCollapsed &&
+        imeSelection.start != selection.start.offset) {
+      await editorState.updateSelectionWithReason(
+        Selection.collapsed(
+          Position(
+            path: selection.start.path,
+            offset: imeSelection.start,
+          ),
+        ),
+        reason: SelectionUpdateReason.uiEvent,
+      );
+
+      return true;
+    }
+
+    return false;
+  }
+
+  final node = editorState.getNodeAtPath(selection.start.path);
+  final maxOffset = node?.delta?.length;
+  if (maxOffset == null) {
+    return false;
+  }
+
+  int clampOffset(int offset) {
+    if (offset < 0) {
+      return 0;
+    }
+    if (offset > maxOffset) {
+      return maxOffset;
+    }
+    return offset;
+  }
+  final nextSelection = Selection(
+    start: Position(
+      path: selection.start.path,
+      offset: clampOffset(imeSelection.baseOffset),
+    ),
+    end: Position(
+      path: selection.start.path,
+      offset: clampOffset(imeSelection.extentOffset),
+    ),
+  );
+
+  if (nextSelection == selection) {
+    return false;
+  }
+
+  await editorState.updateSelectionWithReason(
+    nextSelection,
+    reason: SelectionUpdateReason.uiEvent,
+    extraInfo: nextSelection.isCollapsed
+        ? null
+        : const {
+            selectionExtraInfoDisableFloatingToolbar: true,
+          },
+  );
+
+  return true;
 }
 
-bool _isSelectAllNonTextUpdate(TextEditingDeltaNonTextUpdate nonTextUpdate) {
-  final selection = nonTextUpdate.selection;
+bool _isDocumentSelectAllNonTextUpdate(
+  TextEditingDeltaNonTextUpdate nonTextUpdate,
+  EditorState editorState,
+) {
+  final imeSelection = nonTextUpdate.selection;
+  if (nonTextUpdate.oldText.isEmpty ||
+      imeSelection.start != 0 ||
+      imeSelection.end != nonTextUpdate.oldText.length ||
+      imeSelection.isCollapsed ||
+      !nonTextUpdate.composing.isCollapsed) {
+    return false;
+  }
 
-  return nonTextUpdate.oldText.isNotEmpty &&
-      selection.start == 0 &&
-      selection.end == nonTextUpdate.oldText.length &&
-      !selection.isCollapsed &&
-      nonTextUpdate.composing.isCollapsed;
+  // The IME is only given the selected block when the caret is in one
+  // paragraph. A swipe that covers that buffer must stay local; promoting
+  // it to document select-all would delete every block on the follow-up
+  // delete.
+  final selection = editorState.selection;
+  if (selection != null && selection.isSingle) {
+    final nodeText = editorState
+            .getNodeAtPath(selection.start.path)
+            ?.delta
+            ?.toPlainText() ??
+        '';
+    if (nonTextUpdate.oldText == nodeText) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 Future<bool> _checkIfBacktickPressed(

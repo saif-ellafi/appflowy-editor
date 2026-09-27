@@ -199,7 +199,22 @@ class _TableViewState extends State<TableView> {
         ) ??
         widget.tableNode.colsHeight;
     double x = tableBorderChrome + borderWidth;
-    final handles = <Widget>[];
+    final handles = <Widget>[
+      Positioned(
+        left: tableBorderChrome + borderWidth / 2 - hitWidth / 2,
+        width: hitWidth,
+        top: topChrome,
+        height: height,
+        child: TableColResizeHandle(
+          key: const ValueKey('table_col_resize_leading'),
+          tableNode: widget.tableNode,
+          editorState: widget.editorState,
+          colIdx: 0,
+          invertDrag: true,
+          guideColor: widget.tableStyle.borderHoverColor,
+        ),
+      ),
+    ];
 
     for (var i = 0; i < widget.tableNode.colsLen; i++) {
       x += interaction.previewWidthFor(i) ?? widget.tableNode.getColWidth(i);
