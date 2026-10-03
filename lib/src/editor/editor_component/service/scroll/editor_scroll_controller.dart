@@ -20,6 +20,8 @@ class EditorScrollController {
     required this.editorState,
     this.shrinkWrap = false,
     ScrollController? scrollController,
+    this.initialIndex = 0,
+    this.initialAlignment = 0,
   }) {
     // if shrinkWrap is true, we will render the document with Column layout.
     // otherwise, we will render the document with ScrollablePositionedList.
@@ -45,6 +47,12 @@ class EditorScrollController {
 
   final EditorState editorState;
   final bool shrinkWrap;
+
+  /// Where a non-shrinkWrap list first lays out: the list item index and where
+  /// its leading edge sits in the viewport (0 top, 1 bottom). Lets a rebuilt
+  /// editor open at a saved position instead of drawing the top first.
+  final int initialIndex;
+  final double initialAlignment;
 
   // provide the current scroll offset
   final ValueNotifier<double> offsetNotifier = ValueNotifier(0);

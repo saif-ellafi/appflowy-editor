@@ -323,6 +323,13 @@ class _PositionedListState extends State<PositionedList> {
     if (!updateScheduled) {
       updateScheduled = true;
       SchedulerBinding.instance.addPostFrameCallback((_) {
+        // The list can be torn down (e.g. the editor swapped for a new
+        // document) between scheduling and this frame; its notifier is
+        // disposed by then.
+        if (!mounted) {
+          updateScheduled = false;
+          return;
+        }
         final elements = registeredElements.value;
         if (elements == null) {
           updateScheduled = false;

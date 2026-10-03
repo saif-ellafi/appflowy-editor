@@ -100,9 +100,14 @@ class PageBlockComponent extends BlockComponentStatelessWidget {
       final extentCount =
           (hasHeader ? 1 : 0) + (hasFooter ? 1 : 0) + (hasClearance ? 1 : 0);
 
+      final itemCount = items.length + extentCount;
       return ScrollablePositionedList.builder(
         shrinkWrap: scrollController.shrinkWrap,
-        itemCount: items.length + extentCount,
+        itemCount: itemCount,
+        initialScrollIndex: itemCount == 0
+            ? 0
+            : scrollController.initialIndex.clamp(0, itemCount - 1),
+        initialAlignment: scrollController.initialAlignment,
         itemBuilder: (context, index) {
           editorState.updateAutoScroller(Scrollable.of(context));
           if (hasHeader && index == 0) {
