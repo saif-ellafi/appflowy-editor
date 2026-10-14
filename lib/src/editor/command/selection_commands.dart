@@ -32,6 +32,71 @@ extension SelectionTransform on EditorState {
     return true;
   }
 
+  /// [selection] (normalized) without a block without text it only touches:
+  /// one it starts right after (offset past 0), or ends right before
+  /// (offset 0). Null when nothing is left.
+  Selection? _withoutEdgeBlocks(Selection selection) {
+    var start = selection.start;
+    var end = selection.end;
+    if (start.path.equals(end.path)) {
+      return selection;
+    }
+    final first = getNodeAtPath(start.path);
+    if (first != null && first.delta == null && start.offset > 0) {
+      final next = _nextInOrder(first);
+      if (next == null) {
+        return null;
+      }
+      start = Position(path: next.path);
+    }
+    final last = getNodeAtPath(end.path);
+    if (last != null && last.delta == null && end.offset == 0) {
+      final previous = _previousInOrder(last);
+      if (previous == null) {
+        return null;
+      }
+      end = Position(
+        path: previous.path,
+        offset: previous.delta?.length ?? 1,
+      );
+    }
+    if (end.path < start.path ||
+        (end.path.equals(start.path) && end.offset <= start.offset)) {
+      return null;
+    }
+    return Selection(start: start, end: end);
+  }
+
+  /// The node after [node] in reading order: its first child, its next
+  /// sibling, or the next sibling of the closest ancestor that has one.
+  Node? _nextInOrder(Node node) {
+    if (node.children.isNotEmpty) {
+      return node.children.first;
+    }
+    Node? current = node;
+    while (current != null && current.parent != null) {
+      if (current.next != null) {
+        return current.next;
+      }
+      current = current.parent;
+    }
+    return null;
+  }
+
+  /// The node before [node] in reading order: the deepest last descendant of
+  /// its previous sibling, or else its parent (not the document root).
+  Node? _previousInOrder(Node node) {
+    var previous = node.previous;
+    if (previous == null) {
+      final parent = node.parent;
+      return parent == null || parent.parent == null ? null : parent;
+    }
+    while (previous!.children.isNotEmpty) {
+      previous = previous.children.last;
+    }
+    return previous;
+  }
+
   /// Deletes the selection.
   ///
   /// If the selection is collapsed, this function does nothing.
@@ -61,6 +126,14 @@ extension SelectionTransform on EditorState {
 
     // Normalize the selection so that it is never reversed or extended.
     selection = selection.normalized;
+
+    // A block without text (a picture) that the selection only touches at
+    // its outer edge isn't part of it: leave it out, as copying does.
+    final trimmed = _withoutEdgeBlocks(selection);
+    if (trimmed == null) {
+      return false;
+    }
+    selection = trimmed;
 
     // Start a new transaction.
     final transaction = this.transaction;

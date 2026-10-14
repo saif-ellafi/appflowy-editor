@@ -238,4 +238,54 @@ void main() {
     await press(tester, LogicalKeyboardKey.arrowRight);
     expect(editorState.selection, Selection.collapsed(Position(path: [2])));
   });
+
+  group('a selection only touching a picture\'s edge leaves it', () {
+    EditorState editor() => EditorState(
+          document: Document.blank()
+            ..insert([0], [
+              paragraphNode(text: 'Above'),
+              imageNode(url: _picture, width: 100),
+              paragraphNode(text: 'Below'),
+            ]),
+        );
+    List<String> layout(EditorState editorState) => [
+          for (final node in editorState.document.root.children)
+            node.delta?.toPlainText() ?? node.type,
+        ];
+
+    test('ending right before it', () async {
+      final editorState = editor();
+      await editorState.deleteSelection(
+        Selection(start: Position(path: [0], offset: 2), end: Position(path: [1])),
+      );
+      expect(layout(editorState), ['Ab', ImageBlockKeys.type, 'Below']);
+    });
+
+    test('starting right after it', () async {
+      final editorState = editor();
+      await editorState.deleteSelection(
+        Selection(start: Position(path: [1], offset: 1), end: Position(path: [2], offset: 3)),
+      );
+      expect(layout(editorState), ['Above', ImageBlockKeys.type, 'ow']);
+    });
+
+    test('touching only its edges selects nothing', () async {
+      final editorState = editor();
+      expect(
+        await editorState.deleteSelection(
+          Selection(start: Position(path: [1], offset: 1), end: Position(path: [2])),
+        ),
+        isFalse,
+      );
+      expect(layout(editorState), ['Above', ImageBlockKeys.type, 'Below']);
+    });
+
+    test('a range across it still takes it', () async {
+      final editorState = editor();
+      await editorState.deleteSelection(
+        Selection(start: Position(path: [0], offset: 2), end: Position(path: [2], offset: 3)),
+      );
+      expect(layout(editorState), ['Abow']);
+    });
+  });
 }
