@@ -296,9 +296,10 @@ class _DesktopSelectionServiceWidgetState
     if (HardwareKeyboard.instance.isShiftPressed && _panStartPosition != null) {
       selection = Selection(start: _panStartPosition!, end: position);
     } else {
-      selection = selectable.cursorStyle == CursorStyle.verticalLine
-          ? Selection.collapsed(position)
-          : Selection(start: selectable.start(), end: selectable.end());
+      selection = selectable.getSelectionOnTap(offset) ??
+          (selectable.cursorStyle == CursorStyle.verticalLine
+              ? Selection.collapsed(position)
+              : Selection(start: selectable.start(), end: selectable.end()));
 
       // Reset old start offset
       _panStartPosition = position;

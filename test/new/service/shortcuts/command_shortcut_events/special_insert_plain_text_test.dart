@@ -57,4 +57,19 @@ void main() {
       'HP: 11',
     );
   });
+
+  test('specialInsertPlainText labels plot beat chips with their result', () {
+    expect(
+      specialInsertPlainText({
+        'beatLink': {
+          'kind': 'proposal',
+          'label': 'Plot Beat',
+          'result': 'Someone is not who they seem',
+          'sheetId': 'main',
+          'beatIndex': 3,
+        },
+      }),
+      '[Plot Beat: Someone is not who they seem]',
+    );
+  });
 }

@@ -52,6 +52,30 @@ CommandShortcutEventHandler _backspaceInCollapsedSelection = (editorState) {
 
   final transaction = editorState.transaction;
 
+  // The caret before a block without text, such as a picture: backspace
+  // acts on what is above it, removing an empty line or stepping into the
+  // text, and keeps the block.
+  if (node.delta == null && position.offset == 0) {
+    final previous = node.previous;
+    if (previous == null) {
+      return KeyEventResult.handled;
+    }
+    if (previous.type == ParagraphBlockKeys.type &&
+        previous.delta?.isEmpty == true &&
+        previous.children.isEmpty) {
+      transaction
+        ..deleteNode(previous)
+        ..afterSelection = Selection.collapsed(Position(path: previous.path));
+      editorState.apply(transaction);
+    } else {
+      editorState.selection = Selection.collapsed(
+        Position(path: previous.path, offset: previous.delta?.length ?? 1),
+      );
+    }
+
+    return KeyEventResult.handled;
+  }
+
   // delete the entire node if the delta is empty
   if (node.delta == null) {
     transaction.deleteNode(node);

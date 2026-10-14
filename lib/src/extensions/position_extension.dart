@@ -45,7 +45,11 @@ extension PositionExtension on Position {
           );
         }
 
-        return Position(path: path, offset: offset);
+        // A block without text has two caret places: before it and after it.
+        return Position(
+          path: path,
+          offset: forward ? 0 : node.selectable?.end().offset ?? offset,
+        );
 
       case SelectionRange.word:
         final delta = node.delta;

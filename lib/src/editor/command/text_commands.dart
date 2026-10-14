@@ -3,6 +3,32 @@ import 'dart:math';
 import 'package:appflowy_editor/appflowy_editor.dart';
 
 extension TextTransforms on EditorState {
+  /// With the caret before (offset 0) or after a block that holds no text,
+  /// such as a picture, starts an empty paragraph on that side and moves the
+  /// caret into it, so what is typed there has a place to go.
+  ///
+  /// Returns false, changing nothing, when the caret is anywhere else.
+  Future<bool> openParagraphBesideBlock() async {
+    final selection = this.selection;
+    if (selection == null || !selection.isCollapsed) {
+      return false;
+    }
+    final node = getNodeAtPath(selection.start.path);
+    if (node == null ||
+        node.delta != null ||
+        node.parent == null ||
+        node.type == TableBlockKeys.type) {
+      return false;
+    }
+    final path = selection.start.offset == 0 ? node.path : node.path.next;
+    final transaction = this.transaction
+      ..insertNode(path, paragraphNode())
+      ..afterSelection = Selection.collapsed(Position(path: path));
+    await apply(transaction);
+
+    return true;
+  }
+
   /// Inserts a new line at the given position.
   ///
   /// If the [Position] is not passed in, use the current selection.
@@ -26,6 +52,17 @@ extension TextTransforms on EditorState {
 
     if (node == null) {
       return;
+    }
+
+    // Before a block without text, such as a picture: the empty line goes
+    // above it and the caret stays before the block.
+    if (node.delta == null && position.offset == 0) {
+      final transaction = this.transaction
+        ..insertNode(node.path, paragraphNode())
+        ..afterSelection = Selection.collapsed(
+          Position(path: node.path.next),
+        );
+      return apply(transaction);
     }
 
     // Get the transaction and the path of the next node.

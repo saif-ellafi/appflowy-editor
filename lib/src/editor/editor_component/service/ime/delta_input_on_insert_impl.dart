@@ -13,6 +13,12 @@ Future<void> onInsert(
 
   final textInserted = insertion.textInserted;
 
+  // Typed beside a picture or another block without text: the text starts a
+  // paragraph there. A new line is left to the insert-newline shortcut.
+  if (textInserted != '\n') {
+    await editorState.openParagraphBesideBlock();
+  }
+
   /// On mobile devices, the "/" is context-sensitive,which means it can't be
   /// recognized as a standalone character. This requires special handling.
   final isMobileSlash =

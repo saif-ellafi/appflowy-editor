@@ -277,6 +277,17 @@ extension SelectionTransform on EditorState {
     }
 
     final delta = node.delta;
+    // A block without text, such as a picture, has two caret places: before
+    // it and after it, whatever the step.
+    if (delta == null && start != null && end != null) {
+      updateSelectionWithReason(
+        Selection.collapsed(
+          direction == SelectionMoveDirection.forward ? start : end,
+        ),
+        reason: SelectionUpdateReason.uiEvent,
+      );
+      return;
+    }
     switch (range) {
       case SelectionMoveRange.character:
         if (delta != null) {

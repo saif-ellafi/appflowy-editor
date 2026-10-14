@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:appflowy_editor/appflowy_editor.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -57,6 +59,7 @@ class ImageBlockComponentBuilder extends BlockComponentBuilder {
     super.configuration,
     this.showMenu = false,
     this.menuBuilder,
+    this.showSelection = false,
   });
 
   /// Whether to show the menu of this block component.
@@ -64,6 +67,13 @@ class ImageBlockComponentBuilder extends BlockComponentBuilder {
 
   ///
   final ImageBlockComponentMenuBuilder? menuBuilder;
+
+  /// Outlines the picture while it is selected, and lets the caret sit before
+  /// or after it: a click beside the picture places the caret on that side, a
+  /// click on the picture selects it.
+  ///
+  /// Off by default: a click selects the picture without showing it.
+  final bool showSelection;
 
   @override
   BlockComponentWidget build(BlockComponentContext blockComponentContext) {
@@ -84,6 +94,7 @@ class ImageBlockComponentBuilder extends BlockComponentBuilder {
       ),
       showMenu: showMenu,
       menuBuilder: menuBuilder,
+      showSelection: showSelection,
     );
   }
 
@@ -102,12 +113,16 @@ class ImageBlockComponentWidget extends BlockComponentStatefulWidget {
     super.configuration = const BlockComponentConfiguration(),
     this.showMenu = false,
     this.menuBuilder,
+    this.showSelection = false,
   });
 
   /// Whether to show the menu of this block component.
   final bool showMenu;
 
   final ImageBlockComponentMenuBuilder? menuBuilder;
+
+  /// See [ImageBlockComponentBuilder.showSelection].
+  final bool showSelection;
 
   @override
   State<ImageBlockComponentWidget> createState() =>
@@ -173,15 +188,58 @@ class ImageBlockComponentWidgetState extends State<ImageBlockComponentWidget>
       child: child,
     );
 
+    if (widget.showSelection) {
+      child = Stack(
+        clipBehavior: Clip.none,
+        children: [
+          child,
+          ValueListenableBuilder<Selection?>(
+            valueListenable: editorState.selectionNotifier,
+            builder: (context, selection, _) {
+              final picture = _pictureRect();
+              if (selection == null ||
+                  picture == null ||
+                  !_pictureSelected(selection)) {
+                return const SizedBox.shrink();
+              }
+
+              return Positioned.fromRect(
+                rect: picture.inflate(2),
+                child: IgnorePointer(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      border: Border.all(
+                        color: editorState.editorStyle.selectionColor
+                            .withValues(alpha: 1),
+                        width: 2,
+                      ),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
+      );
+    }
+
     child = BlockSelectionContainer(
       node: node,
       delegate: this,
       listenable: editorState.selectionNotifier,
       remoteSelection: editorState.remoteSelections,
       blockColor: editorState.editorStyle.selectionColor,
-      supportTypes: const [
-        BlockSelectionType.block,
-      ],
+      cursorColor: editorState.editorStyle.cursorColor,
+      selectionColor: editorState.editorStyle.selectionColor,
+      supportTypes: widget.showSelection
+          ? const [
+              BlockSelectionType.block,
+              BlockSelectionType.cursor,
+            ]
+          : const [
+              BlockSelectionType.block,
+            ],
       child: child,
     );
 
@@ -242,13 +300,86 @@ class ImageBlockComponentWidgetState extends State<ImageBlockComponentWidget>
   Position end() => Position(path: widget.node.path, offset: 1);
 
   @override
-  Position getPositionInOffset(Offset start) => end();
+  Position getPositionInOffset(Offset start) {
+    if (!widget.showSelection) {
+      return end();
+    }
+    final picture = _pictureRect();
+    final local = _imageLocal(start);
+    if (picture == null || local == null) {
+      return end();
+    }
+
+    return local.dx < picture.center.dx ? this.start() : end();
+  }
 
   @override
-  bool get shouldCursorBlink => false;
+  Selection? getSelectionOnTap(Offset offset) {
+    if (!widget.showSelection) {
+      return null;
+    }
+    final picture = _pictureRect();
+    final local = _imageLocal(offset);
+    if (picture != null &&
+        local != null &&
+        local.dx >= picture.left &&
+        local.dx <= picture.right) {
+      return Selection(start: start(), end: end());
+    }
+
+    return Selection.collapsed(getPositionInOffset(offset));
+  }
 
   @override
-  CursorStyle get cursorStyle => CursorStyle.cover;
+  bool get shouldCursorBlink => widget.showSelection;
+
+  @override
+  CursorStyle get cursorStyle =>
+      widget.showSelection ? CursorStyle.verticalLine : CursorStyle.cover;
+
+  /// Where the picture is drawn, in the coordinates of the block's selection
+  /// area (inside the margin, around the padding).
+  Rect? _pictureRect() {
+    final box = imageKey.currentContext?.findRenderObject();
+    if (box is! RenderBox || !box.hasSize) {
+      return null;
+    }
+    final inner = padding.deflateRect(Offset.zero & box.size);
+    final attributes = node.attributes;
+    final width = min(
+      inner.width,
+      max(30.0, (attributes[ImageBlockKeys.width] as num?)?.toDouble() ?? inner.width),
+    );
+    final alignment = AlignmentExtension.fromString(
+      attributes[ImageBlockKeys.align] ?? 'center',
+    );
+    final left = inner.left + (inner.width - width) * (alignment.x + 1) / 2;
+
+    return Rect.fromLTWH(left, inner.top, width, inner.height);
+  }
+
+  /// Whether [selection] takes in the picture: a caret beside it doesn't, nor
+  /// does a range that only touches its outer edge.
+  bool _pictureSelected(Selection selection) {
+    final range = selection.normalized;
+    final path = node.path;
+    if (range.isCollapsed || !path.inSelection(range)) {
+      return false;
+    }
+    final startsAfter = range.start.path.equals(path) && range.start.offset > 0;
+    final endsBefore = range.end.path.equals(path) && range.end.offset == 0;
+
+    return !startsAfter && !endsBefore;
+  }
+
+  Offset? _imageLocal(Offset global) {
+    final box = imageKey.currentContext?.findRenderObject();
+    if (box is! RenderBox || !box.hasSize) {
+      return null;
+    }
+
+    return box.globalToLocal(global);
+  }
 
   @override
   Rect getBlockRect({
@@ -267,6 +398,19 @@ class ImageBlockComponentWidgetState extends State<ImageBlockComponentWidget>
     Position position, {
     bool shiftWithBaseOffset = false,
   }) {
+    if (widget.showSelection) {
+      final picture = _pictureRect();
+      if (picture == null) {
+        return null;
+      }
+      // A thin caret just outside the picture's edge.
+      const caretWidth = 2.0;
+      final x = position.offset == 0
+          ? max(0.0, picture.left - caretWidth - 2)
+          : picture.right + 2;
+
+      return Rect.fromLTWH(x, picture.top, caretWidth, picture.height);
+    }
     if (_renderBox == null) {
       return null;
     }
@@ -280,6 +424,14 @@ class ImageBlockComponentWidgetState extends State<ImageBlockComponentWidget>
     Selection selection, {
     bool shiftWithBaseOffset = false,
   }) {
+    if (widget.showSelection) {
+      final picture = _pictureRect();
+      if (picture == null || !_pictureSelected(selection)) {
+        return [];
+      }
+
+      return [picture];
+    }
     if (_renderBox == null) {
       return [];
     }

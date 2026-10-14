@@ -1,34 +1,28 @@
 import 'package:pdf/pdf.dart';
 
 extension ColorExt on PdfColor {
+  /// Parses `rgba(r, g, b, a)` as written by the HTML encoder: channels
+  /// 0-255, alpha either 0-255 or a CSS fraction (`0.5`).
   static PdfColor? fromRgbaString(String colorString) {
-    final regex =
-        RegExp(r'rgba\((\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)');
+    final regex = RegExp(
+      r'rgba\((\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+(?:\.\d+)?)\s*\)',
+    );
     final match = regex.firstMatch(colorString);
-
     if (match == null) {
       return null;
     }
-    if (match.groupCount < 4) {
-      return null;
-    }
 
-    final redColor = match.group(1);
-    final greenColor = match.group(2);
-    final blueColor = match.group(3);
-    final alphaColor = match.group(4);
+    double channel(String value) => (int.parse(value).clamp(0, 255)) / 255;
+    final alphaText = match.group(4)!;
+    final alpha = alphaText.contains('.')
+        ? double.parse(alphaText).clamp(0.0, 1.0)
+        : channel(alphaText);
 
-    final red = redColor != null ? int.tryParse(redColor) : null;
-    final green = greenColor != null ? int.tryParse(greenColor) : null;
-    final blue = blueColor != null ? int.tryParse(blueColor) : null;
-    final alpha = alphaColor != null ? int.tryParse(alphaColor) : null;
-
-    if (red == null || green == null || blue == null || alpha == null) {
-      return null;
-    }
-
-    return PdfColor.fromInt(
-      rgbaToHex(red, green, blue, opacity: alpha.toDouble()),
+    return PdfColor(
+      channel(match.group(1)!),
+      channel(match.group(2)!),
+      channel(match.group(3)!),
+      alpha,
     );
   }
 

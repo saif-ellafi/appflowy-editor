@@ -17,9 +17,25 @@ class PdfHTMLEncoder {
   PdfHTMLEncoder({
     this.font,
     required this.fontFallback,
+    this.maxImageHeight,
+    this.paragraphSpacing,
+    this.prepareImage,
   });
   final pw.Font? font;
   final List<pw.Font> fontFallback;
+
+  /// When set, images keep the width the document gives them and shrink to
+  /// at most this height. An image can't break across pages, so a tall one
+  /// stretched to the page width would otherwise fail the whole export.
+  /// Null keeps the original behaviour.
+  final double? maxImageHeight;
+
+  /// Space below each paragraph. Null keeps the original 6.
+  final double? paragraphSpacing;
+
+  /// Runs on every image's bytes before they are embedded, e.g. to shrink
+  /// large pictures. Null embeds them as they are.
+  final Future<Uint8List> Function(Uint8List bytes)? prepareImage;
 
   Future<pw.Document> convert(
     String input,
@@ -544,7 +560,7 @@ class PdfHTMLEncoder {
     final child = await _parseDeltaElement(element);
 
     return pw.Padding(
-      padding: const pw.EdgeInsets.only(bottom: 6.0),
+      padding: pw.EdgeInsets.only(bottom: paragraphSpacing ?? 6.0),
       child: child,
     );
   }
@@ -556,11 +572,14 @@ class PdfHTMLEncoder {
         if (src.startsWith('https')) {
           final networkImage = await _fetchImage(src);
 
-          return pw.Image(pw.MemoryImage(networkImage));
+          return _fitImage(element, pw.MemoryImage(await _prepare(networkImage)));
         } else {
           final File localImage = File(src);
 
-          return pw.Image(pw.MemoryImage(await localImage.readAsBytes()));
+          return _fitImage(
+            element,
+            pw.MemoryImage(await _prepare(await localImage.readAsBytes())),
+          );
         }
       } else {
         return pw.Text('');
@@ -568,6 +587,32 @@ class PdfHTMLEncoder {
     } catch (e) {
       return pw.Text(e.toString());
     }
+  }
+
+  Future<Uint8List> _prepare(Uint8List bytes) async {
+    final prepare = prepareImage;
+    return prepare == null ? bytes : prepare(bytes);
+  }
+
+  pw.Widget _fitImage(dom.Element element, pw.ImageProvider image) {
+    final maxHeight = maxImageHeight;
+    if (maxHeight == null) return pw.Image(image);
+    final width = double.tryParse(element.attributes['width'] ?? '');
+    final alignment = switch (element.attributes['align']) {
+      'left' => pw.Alignment.centerLeft,
+      'right' => pw.Alignment.centerRight,
+      _ => pw.Alignment.center,
+    };
+    return pw.Align(
+      alignment: alignment,
+      child: pw.ConstrainedBox(
+        constraints: pw.BoxConstraints(
+          maxWidth: width ?? double.infinity,
+          maxHeight: maxHeight,
+        ),
+        child: pw.Image(image),
+      ),
+    );
   }
 
   Future<Uint8List> _fetchImage(String url) async {

@@ -1,4 +1,4 @@
-/// Human-readable replacement for U+FFFC special inserts (entity/table/roll/pdf/widget).
+/// Human-readable replacement for U+FFFC special inserts (entity/table/roll/beat/pdf/widget).
 String? specialInsertPlainText(Map? attributes) {
   if (attributes == null) return null;
 
@@ -26,6 +26,13 @@ String? specialInsertPlainText(Map? attributes) {
     final label = (rollLink['label']?.toString() ?? '').trim();
     if (label.isNotEmpty) return '$label [$formula: $result]';
     return '[$formula: $result]';
+  }
+
+  final beatLink = attributes['beatLink'];
+  if (beatLink is Map) {
+    final label = beatLink['label']?.toString() ?? '';
+    final result = beatLink['result'] ?? '';
+    return label.isEmpty ? '[$result]' : '[$label: $result]';
   }
 
   final pdfLink = attributes['pdfLink'];

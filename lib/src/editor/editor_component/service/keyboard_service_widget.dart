@@ -300,6 +300,14 @@ class KeyboardServiceWidgetState extends State<KeyboardServiceWidget>
       );
     }
 
+    // The caret beside a block without text, such as a picture: an empty
+    // value, so what is typed reaches the editor (see onInsert).
+    if (selection.isCollapsed) {
+      return const TextEditingValue(
+        selection: TextSelection.collapsed(offset: 0),
+      );
+    }
+
     return null;
   }
 

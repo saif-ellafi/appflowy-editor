@@ -86,6 +86,10 @@ mixin SelectableMixin<T extends StatefulWidget> on State<T> {
   ///   and the rest can return null.
   Selection? getWordBoundaryInPosition(Position position) => null;
 
+  /// The selection a click at [offset] makes, or null for the default: a
+  /// caret for [CursorStyle.verticalLine], the whole block otherwise.
+  Selection? getSelectionOnTap(Offset offset) => null;
+
   bool get shouldCursorBlink => true;
 
   CursorStyle get cursorStyle => CursorStyle.verticalLine;

@@ -11,6 +11,9 @@ Future<void> onReplace(
 ) async {
   AppFlowyEditorLog.input.debug('onReplace: $replacement');
 
+  // Typed beside a picture or another block without text: see onInsert.
+  await editorState.openParagraphBesideBlock();
+
   // delete the selection
   final selection = editorState.selection;
   if (selection == null) {
