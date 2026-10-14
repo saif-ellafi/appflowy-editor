@@ -97,6 +97,137 @@ void main() {
     expect(imageIndex(editorState), -1);
   });
 
+  // The resize handles, drawn on both sides of the picture.
+  int handlesPainted(WidgetTester tester) => find
+      .byWidgetPredicate(
+        (w) =>
+            w is Container &&
+            w.constraints == const BoxConstraints.tightFor(width: 5, height: 40),
+      )
+      .evaluate()
+      .length;
+
+  testWidgets('a selected picture shows its resize handles without a hover',
+      (tester) async {
+    await pumpEditor(tester);
+    final rect = pictureRect(tester);
+    expect(handlesPainted(tester), 0);
+
+    await tapAt(tester, rect.center);
+    expect(handlesPainted(tester), 2);
+
+    // A caret beside it isn't selecting it.
+    await tapAt(tester, rect.centerLeft - const Offset(40, 0));
+    expect(handlesPainted(tester), 0);
+  });
+
+  testWidgets('the outline follows the picture while it is resized',
+      (tester) async {
+    final editorState = await pumpEditor(tester);
+    final rect = pictureRect(tester);
+    await tapAt(tester, rect.center);
+
+    // The outline, not the handles (bordered too).
+    Rect outline() => tester.getRect(
+          find.byWidgetPredicate(
+            (w) =>
+                w is DecoratedBox &&
+                w.decoration is BoxDecoration &&
+                (w.decoration as BoxDecoration).border != null &&
+                (w.decoration as BoxDecoration).borderRadius ==
+                    BorderRadius.circular(4),
+          ),
+        );
+    expect(outline().width, 104);
+
+    // The right handle, dragged 40px in; past the drag's start threshold the
+    // rest counts, twice over for a centred picture.
+    final drag = await tester.startGesture(rect.centerRight - const Offset(7.5, 0));
+    for (var i = 0; i < 8; i++) {
+      await drag.moveBy(const Offset(-5, 0));
+      await tester.pump();
+    }
+    expect(outline().width, lessThan(104));
+    expect(outline().center.dx, closeTo(rect.center.dx, 0.5));
+    final during = outline().width;
+
+    await drag.up();
+    await tester.pumpAndSettle();
+    final width = editorState.getNodeAtPath([1])!.attributes[ImageBlockKeys.width] as double;
+    expect(width, lessThan(100));
+    expect(during, closeTo(width + 4, 0.01));
+    // Still selected, outlined at its new size.
+    expect(outline().width, closeTo(width + 4, 0.01));
+    expect(
+      editorState.selection,
+      Selection(start: Position(path: [1]), end: Position(path: [1], offset: 1)),
+    );
+  });
+
+  testWidgets('without the option, the handles wait for a hover',
+      (tester) async {
+    await pumpEditor(tester, showSelection: false);
+    await tapAt(tester, pictureRect(tester).center);
+    expect(handlesPainted(tester), 0);
+  });
+
+  testWidgets('with the option, the mobile drag handles leave its edges free',
+      (tester) async {
+    await pumpEditor(tester);
+    expect(
+      tester
+          .state<ImageBlockComponentWidgetState>(
+            find.byType(ImageBlockComponentWidget),
+          )
+          .showsMobileSelectionHandles,
+      isFalse,
+    );
+  });
+
+  testWidgets('without the option, the mobile drag handles stay',
+      (tester) async {
+    await pumpEditor(tester, showSelection: false);
+    expect(
+      tester
+          .state<ImageBlockComponentWidgetState>(
+            find.byType(ImageBlockComponentWidget),
+          )
+          .showsMobileSelectionHandles,
+      isTrue,
+    );
+  });
+
+  testWidgets('a wider handle area stays inside the picture', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Center(
+          child: ResizableImage(
+            src: _picture,
+            width: 100,
+            height: 100,
+            alignment: Alignment.center,
+            editable: true,
+            showHandles: true,
+            handleHitWidth: 24,
+            onResize: (_) {},
+          ),
+        ),
+      ),
+    );
+    final areas = tester
+        .widgetList<Positioned>(
+          find.descendant(
+            of: find.byType(ResizableImage),
+            matching: find.byType(Positioned),
+          ),
+        )
+        .toList();
+    expect(areas.map((p) => p.width), [24, 24]);
+    expect(areas.first.left, 0);
+    expect(areas.last.right, 0);
+    expect(handlesPainted(tester), 2);
+  });
+
   testWidgets('a click beside the picture places a caret on that side',
       (tester) async {
     final editorState = await pumpEditor(tester);

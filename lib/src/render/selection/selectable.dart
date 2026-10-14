@@ -90,6 +90,11 @@ mixin SelectableMixin<T extends StatefulWidget> on State<T> {
   /// caret for [CursorStyle.verticalLine], the whole block otherwise.
   Selection? getSelectionOnTap(Offset offset) => null;
 
+  /// Whether a selection within this block alone shows the mobile drag
+  /// handles. A block with handles of its own on its edges (e.g. a picture's
+  /// resize handles) can turn them off, so they don't take its drags.
+  bool get showsMobileSelectionHandles => true;
+
   bool get shouldCursorBlink => true;
 
   CursorStyle get cursorStyle => CursorStyle.verticalLine;

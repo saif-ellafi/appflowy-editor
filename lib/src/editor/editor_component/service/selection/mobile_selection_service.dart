@@ -300,6 +300,13 @@ class _MobileSelectionServiceWidgetState
         );
         final selectable = node?.selectable;
 
+        // A block that keeps its edges for its own handles.
+        if (selectable != null &&
+            !selectable.showsMobileSelectionHandles &&
+            selection.start.path.equals(selection.end.path)) {
+          return const SizedBox.shrink();
+        }
+
         // get the cursor rect when the selection is collapsed.
         final rects = isCollapsedWhenDraggingHandle
             ? [
@@ -628,8 +635,32 @@ class _MobileSelectionServiceWidgetState
     );
   }
 
+  /// A block's own answer to a tap (see [SelectableMixin.getSelectionOnTap]),
+  /// e.g. a picture selected whole. A range over a block takes no keyboard.
+  bool _selectOnTap(Offset offset) {
+    final selection =
+        getNodeInOffset(offset)?.selectable?.getSelectionOnTap(offset);
+    if (selection == null) {
+      return false;
+    }
+    editorState.updateSelectionWithReason(
+      selection,
+      reason: SelectionUpdateReason.uiEvent,
+      customSelectionType: SelectionType.inline,
+      extraInfo: selection.isCollapsed
+          ? null
+          : {selectionExtraInfoDoNotAttachTextService: true},
+    );
+
+    return true;
+  }
+
   void _onTapUpIOS(TapUpDetails details) {
     final offset = details.globalPosition;
+
+    if (_selectOnTap(offset)) {
+      return;
+    }
 
     // if the tap happens on a selection area, don't change the selection
     if (_isClickOnSelectionArea(offset)) {
@@ -752,6 +783,10 @@ class _MobileSelectionServiceWidgetState
     final offset = details.globalPosition;
 
     clearSelection();
+
+    if (_selectOnTap(offset)) {
+      return;
+    }
 
     // make a collapsed selection at offset
     final position = getPositionInOffset(offset);

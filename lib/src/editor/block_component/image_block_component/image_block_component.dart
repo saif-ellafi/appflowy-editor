@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:appflowy_editor/appflowy_editor.dart';
+import 'package:appflowy_editor/src/editor/util/platform_extension.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -145,11 +146,15 @@ class ImageBlockComponentWidgetState extends State<ImageBlockComponentWidget>
 
   final showActionsNotifier = ValueNotifier<bool>(false);
 
+  /// The picture's width while a handle is dragged, for the outline to follow.
+  final _resizingWidth = ValueNotifier<double?>(null);
+
   bool alwaysShowMenu = false;
 
   @override
   void dispose() {
     showActionsNotifier.dispose();
+    _resizingWidth.dispose();
 
     super.dispose();
   }
@@ -167,20 +172,42 @@ class ImageBlockComponentWidgetState extends State<ImageBlockComponentWidget>
         MediaQuery.of(context).size.width;
     final height = attributes[ImageBlockKeys.height]?.toDouble();
 
-    Widget child = ResizableImage(
-      src: src,
-      width: width,
-      height: height,
-      editable: editorState.editable,
-      alignment: alignment,
-      onResize: (width) {
-        final transaction = editorState.transaction
-          ..updateNode(node, {
-            ImageBlockKeys.width: width,
-          });
-        editorState.apply(transaction);
-      },
-    );
+    Widget image({bool selected = false}) => ResizableImage(
+          src: src,
+          width: width,
+          height: height,
+          editable: editorState.editable,
+          alignment: alignment,
+          showHandles: selected,
+          // A finger needs more than a mouse to catch the handle.
+          handleHitWidth:
+              widget.showSelection && PlatformExtension.isMobile ? 24 : 5,
+          onResizeUpdate: widget.showSelection
+              ? (width) => _resizingWidth.value = width
+              : null,
+          onResize: (width) {
+            _resizingWidth.value = null;
+            final transaction = editorState.transaction
+              ..updateNode(node, {
+                ImageBlockKeys.width: width,
+              });
+            // A shown selection stays on the picture.
+            if (widget.showSelection) {
+              transaction.afterSelection = editorState.selection;
+            }
+            editorState.apply(transaction);
+          },
+        );
+
+    // A selected picture shows its handles without a hover (touch screens).
+    Widget child = widget.showSelection
+        ? ValueListenableBuilder<Selection?>(
+            valueListenable: editorState.selectionNotifier,
+            builder: (context, selection, _) => image(
+              selected: selection != null && _pictureSelected(selection),
+            ),
+          )
+        : image();
 
     child = Padding(
       key: imageKey,
@@ -193,9 +220,12 @@ class ImageBlockComponentWidgetState extends State<ImageBlockComponentWidget>
         clipBehavior: Clip.none,
         children: [
           child,
-          ValueListenableBuilder<Selection?>(
-            valueListenable: editorState.selectionNotifier,
-            builder: (context, selection, _) {
+          ListenableBuilder(
+            listenable: Listenable.merge(
+              [editorState.selectionNotifier, _resizingWidth],
+            ),
+            builder: (context, _) {
+              final selection = editorState.selection;
               final picture = _pictureRect();
               if (selection == null ||
                   picture == null ||
@@ -333,6 +363,10 @@ class ImageBlockComponentWidgetState extends State<ImageBlockComponentWidget>
   @override
   bool get shouldCursorBlink => widget.showSelection;
 
+  // The resize handles sit where the selection's drag handles would.
+  @override
+  bool get showsMobileSelectionHandles => !widget.showSelection;
+
   @override
   CursorStyle get cursorStyle =>
       widget.showSelection ? CursorStyle.verticalLine : CursorStyle.cover;
@@ -348,7 +382,12 @@ class ImageBlockComponentWidgetState extends State<ImageBlockComponentWidget>
     final attributes = node.attributes;
     final width = min(
       inner.width,
-      max(30.0, (attributes[ImageBlockKeys.width] as num?)?.toDouble() ?? inner.width),
+      max(
+        30.0,
+        _resizingWidth.value ??
+            (attributes[ImageBlockKeys.width] as num?)?.toDouble() ??
+            inner.width,
+      ),
     );
     final alignment = AlignmentExtension.fromString(
       attributes[ImageBlockKeys.align] ?? 'center',

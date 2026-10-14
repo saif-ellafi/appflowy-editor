@@ -16,6 +16,9 @@ class ResizableImage extends StatefulWidget {
     required this.width,
     required this.src,
     this.height,
+    this.showHandles = false,
+    this.handleHitWidth = 5,
+    this.onResizeUpdate,
   });
 
   final String src;
@@ -25,6 +28,17 @@ class ResizableImage extends StatefulWidget {
   final bool editable;
 
   final void Function(double width) onResize;
+
+  /// The width while a handle is being dragged, before [onResize] commits it.
+  final void Function(double width)? onResizeUpdate;
+
+  /// Shows the resize handles without a hover, e.g. while the picture is
+  /// selected: touch screens have no hover. Off by default.
+  final bool showHandles;
+
+  /// How wide each handle's drag area is. The default fits a mouse; a touch
+  /// screen wants a wider one. The handle itself is drawn as before.
+  final double handleHitWidth;
 
   @override
   State<ResizableImage> createState() => _ResizableImageState();
@@ -110,31 +124,40 @@ class _ResizableImageState extends State<ResizableImage> {
           _buildEdgeGesture(
             context,
             top: 0,
-            left: 5,
+            left: _handleInset,
             bottom: 0,
-            width: 5,
+            width: _handleWidth,
             onUpdate: (distance) {
               setState(() {
                 moveDistance = distance;
               });
+              _reportWidth();
             },
           ),
           _buildEdgeGesture(
             context,
             top: 0,
-            right: 5,
+            right: _handleInset,
             bottom: 0,
-            width: 5,
+            width: _handleWidth,
             onUpdate: (distance) {
               setState(() {
                 moveDistance = -distance;
               });
+              _reportWidth();
             },
           ),
         ],
       ],
     );
   }
+
+  void _reportWidth() => widget.onResizeUpdate
+      ?.call(max(_kImageBlockComponentMinWidth, imageWidth - moveDistance));
+
+  // A wider drag area grows around the handle, but stays inside the picture.
+  double get _handleWidth => max(5.0, widget.handleHitWidth);
+  double get _handleInset => max(0.0, 5 - (_handleWidth - 5) / 2);
 
   Widget _buildLoading(BuildContext context) {
     return SizedBox(
@@ -207,9 +230,10 @@ class _ResizableImageState extends State<ResizableImage> {
         },
         child: MouseRegion(
           cursor: SystemMouseCursors.resizeLeftRight,
-          child: onFocus
+          child: onFocus || widget.showHandles
               ? Center(
                   child: Container(
+                    width: 5,
                     height: 40,
                     decoration: BoxDecoration(
                       color: Colors.black.withValues(alpha: 0.5),
