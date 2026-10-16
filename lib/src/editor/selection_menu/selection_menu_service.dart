@@ -87,7 +87,12 @@ class SelectionMenu extends SelectionMenuService {
     dismiss();
 
     final selectionService = editorState.service.selectionService;
-    final selectionRects = selectionService.selectionRects;
+    var selectionRects = selectionService.selectionRects;
+    // The mobile selection service only tracks rects for ranges; fall back to
+    // the caret rect so a collapsed selection still anchors the menu.
+    if (selectionRects.isEmpty) {
+      selectionRects = editorState.selectionRects();
+    }
     if (selectionRects.isEmpty) {
       return;
     }
