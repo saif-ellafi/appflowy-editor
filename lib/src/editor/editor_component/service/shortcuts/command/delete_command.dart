@@ -40,11 +40,12 @@ KeyEventResult _deleteBesideBlock(
 ) {
   final transaction = editorState.transaction;
   if (position.offset == 0) {
-    transaction.deleteNode(node);
     if (node.next == null) {
-      // Leave a line to type on rather than no caret at all.
-      transaction.insertNode(node.path, paragraphNode());
+      // Leave a line to type on rather than no caret at all. It goes in
+      // before the deletion, which would shift its path up.
+      transaction.insertNode(node.path.next, paragraphNode());
     }
+    transaction.deleteNode(node);
     transaction.afterSelection = Selection.collapsed(
       Position(path: node.path),
     );

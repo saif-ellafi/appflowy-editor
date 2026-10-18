@@ -353,6 +353,46 @@ void main() {
     expect(editorState.selection, Selection.collapsed(Position(path: [1])));
   });
 
+  testWidgets('removing the last picture leaves a line for the caret',
+      (tester) async {
+    final editorState = await pumpEditor(tester, after: []);
+    final rect = pictureRect(tester);
+
+    // Backspace after it.
+    await tapAt(tester, rect.centerRight + const Offset(40, 0));
+    await press(tester, LogicalKeyboardKey.backspace);
+    expect(imageIndex(editorState), -1);
+    expect(editorState.getNodeAtPath([1])?.delta?.toPlainText(), '');
+    expect(editorState.selection, Selection.collapsed(Position(path: [1])));
+
+    // Selected, then removed.
+    await editorState.apply(
+      editorState.transaction
+        ..insertNode([2], imageNode(url: _picture, width: 100, height: 100)),
+    );
+    await tester.pumpAndSettle();
+    await tapAt(tester, pictureRect(tester).center);
+    await press(tester, LogicalKeyboardKey.backspace);
+    expect(imageIndex(editorState), -1);
+    expect(editorState.getNodeAtPath([2])?.delta?.toPlainText(), '');
+    expect(editorState.selection, Selection.collapsed(Position(path: [2])));
+
+    // Delete before it.
+    await editorState.apply(
+      editorState.transaction
+        ..insertNode([3], imageNode(url: _picture, width: 100, height: 100)),
+    );
+    editorState.selection = Selection.collapsed(Position(path: [3]));
+    await tester.pumpAndSettle();
+    await press(tester, LogicalKeyboardKey.delete);
+    expect(imageIndex(editorState), -1);
+    expect(
+      editorState.document.root.children.map((n) => n.delta?.toPlainText()),
+      ['Above', '', '', ''],
+    );
+    expect(editorState.selection, Selection.collapsed(Position(path: [3])));
+  });
+
   testWidgets('arrows step through both sides of the picture', (tester) async {
     final editorState = await pumpEditor(tester);
     final rect = pictureRect(tester);

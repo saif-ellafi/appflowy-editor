@@ -78,6 +78,11 @@ CommandShortcutEventHandler _backspaceInCollapsedSelection = (editorState) {
 
   // delete the entire node if the delta is empty
   if (node.delta == null) {
+    if (node.next == null) {
+      // Leave a line to type on rather than no caret at all. It goes in
+      // before the deletion, which would shift its path up.
+      transaction.insertNode(node.path.next, paragraphNode());
+    }
     transaction.deleteNode(node);
     transaction.afterSelection = Selection.collapsed(
       Position(

@@ -155,6 +155,11 @@ extension SelectionTransform on EditorState {
           selection.length,
         );
       } else if (!ignoreNodeTypes.contains(node.parent?.type)) {
+        if (node.next == null) {
+          // Leave a line to type on rather than no caret at all. It goes in
+          // before the deletion, which would shift its path up.
+          transaction.insertNode(node.path.next, paragraphNode());
+        }
         transaction.deleteNode(node);
       }
     }
