@@ -207,11 +207,14 @@ class TableNode {
       return contentHeight + tableCellHeightPadding;
     }).reduce(max);
 
-    if (_cells[0][row].attributes[TableCellBlockKeys.height] != maxHeight &&
+    if (!_sameHeight(
+          _cells[0][row].attributes[TableCellBlockKeys.height],
+          maxHeight,
+        ) &&
         !maxHeight.isNaN) {
       for (int i = 0; i < colsLen; i++) {
         final currHeight = _cells[i][row].attributes[TableCellBlockKeys.height];
-        if (currHeight == maxHeight) {
+        if (_sameHeight(currHeight, maxHeight)) {
           continue;
         }
 
@@ -228,7 +231,7 @@ class TableNode {
       }
     }
 
-    if (node.attributes[TableBlockKeys.colsHeight] != colsHeight &&
+    if (!_sameHeight(node.attributes[TableBlockKeys.colsHeight], colsHeight) &&
         !colsHeight.isNaN) {
       if (transaction != null) {
         transaction.updateNode(node, {TableBlockKeys.colsHeight: colsHeight});
@@ -240,4 +243,9 @@ class TableNode {
       }
     }
   }
+
+  /// Layout float noise (83.0 vs 82.99999999999994) is not a change; saving
+  /// it re-applies the selection, which re-requests the mobile keyboard.
+  static bool _sameHeight(Object? current, double next) =>
+      current is num && (current - next).abs() < 0.5;
 }

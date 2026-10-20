@@ -221,16 +221,19 @@ class _TableViewState extends State<TableView> {
       y += widget.tableNode.getRowHeight(i) + borderWidth;
     }
     y += widget.tableNode.getRowHeight(row) / 2;
-    const hitWidth = tableMobileResizeHitWidth;
+    const hitWidth = tableMobileResizeGripHitWidth;
     final hitThickness = tableHandleHitThickness(context);
     final height = context.select(
           (Node n) => n.attributes[TableBlockKeys.colsHeight],
         ) ??
         widget.tableNode.colsHeight;
     final resizing = interaction.resizingColIdx == col;
+    // Keyed: the guide appearing before the grip must not take over the
+    // grip's element (that disposed the grip mid-drag).
     return [
       if (resizing)
         Positioned(
+          key: const ValueKey('table_col_resize_guide'),
           left: x - 1.5,
           width: 3,
           top: topChrome,
@@ -244,6 +247,7 @@ class _TableViewState extends State<TableView> {
           ),
         ),
       Positioned(
+        key: const ValueKey('table_col_resize_grip'),
         left: x - hitWidth / 2,
         width: hitWidth,
         top: y - hitThickness / 2,

@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 
 const double tableDesktopResizeHitWidth = 12;
 const double tableMobileResizeHitWidth = 44;
-/// Visible touch resize grip (the hit box stays [tableMobileResizeHitWidth]).
+/// Visible touch resize grip.
 const double tableMobileResizeGripSize = 24;
+/// Touch grip hit box across the border: the cell padding on both sides, so
+/// it does not cover text and fight the caret.
+const double tableMobileResizeGripHitWidth = 28;
 
 double tableResizeHitWidth(BuildContext context) {
   return tableIsTouchLayout(context)
@@ -37,6 +40,14 @@ class TableInteractionController extends ChangeNotifier {
   bool get atMinWidth => _atMinWidth;
 
   bool get isResizing => _resizingColIdx != null;
+
+  bool _disposed = false;
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
+  }
 
   double? previewWidthFor(int colIdx) {
     if (_resizingColIdx == colIdx) {
@@ -87,7 +98,7 @@ class TableInteractionController extends ChangeNotifier {
   }
 
   void endResize() {
-    if (_resizingColIdx == null) {
+    if (_disposed || _resizingColIdx == null) {
       return;
     }
     _resizingColIdx = null;

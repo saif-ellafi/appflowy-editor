@@ -414,7 +414,10 @@ void main() {
       expect(find.byType(TableResizeGrip), findsOneWidget);
       expect(
         tester.getSize(find.byKey(const ValueKey('table_col_resize_0'))),
-        const Size(tableMobileResizeHitWidth, tableMobileHandleHitThickness),
+        const Size(
+          tableMobileResizeGripHitWidth,
+          tableMobileHandleHitThickness,
+        ),
       );
       // On the column's right border, level with the caret's row menu.
       var grip = tester.getCenter(find.byType(TableResizeGrip));
@@ -512,6 +515,53 @@ void main() {
       // Measured from touch-down, so the drag slop is not lost.
       expect(tableNode.getColWidth(0), closeTo(original + 50, 1));
       expect(find.byKey(const ValueKey('table_col_resize_0')), findsOneWidget);
+      await editor.dispose();
+    });
+
+    testWidgets('mobile grip survives a step-by-step drag and clears after',
+        (tester) async {
+      final tableNode = TableNode.fromList([
+        ['a', 'c'],
+        ['b', 'd'],
+      ]);
+      final editor = tester.editor..addNode(tableNode.node);
+      editor.editorState.disableSealTimer = true;
+
+      await editor.startTesting(platform: TargetPlatform.android);
+      await tester.pumpAndSettle();
+      await activateTable(editor, tableNode);
+
+      final original = tableNode.getColWidth(0);
+      final before = tester.state(find.byType(TableColResizeHandle));
+      final gesture = await tester.startGesture(
+        tester.getCenter(find.byType(TableResizeGrip)),
+        kind: PointerDeviceKind.touch,
+      );
+      for (var i = 0; i < 6; i++) {
+        await gesture.moveBy(const Offset(10, 0));
+        await tester.pump();
+      }
+
+      // The guide appearing must not replace the grip mid-drag.
+      expect(
+        identical(tester.state(find.byType(TableColResizeHandle)), before),
+        isTrue,
+      );
+      expect(find.textContaining(' px'), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('table_col_resize_guide')),
+        findsOneWidget,
+      );
+
+      await gesture.up();
+      await tester.pumpAndSettle();
+
+      expect(tableNode.getColWidth(0), closeTo(original + 60, 1));
+      expect(find.textContaining(' px'), findsNothing);
+      expect(
+        find.byKey(const ValueKey('table_col_resize_guide')),
+        findsNothing,
+      );
       await editor.dispose();
     });
 

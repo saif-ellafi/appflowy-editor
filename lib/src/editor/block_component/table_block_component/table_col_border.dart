@@ -65,11 +65,19 @@ class _TableColResizeHandleState extends State<TableColResizeHandle> {
   double _startGlobalX = 0;
   Offset _tooltipPosition = Offset.zero;
   OverlayEntry? _tooltip;
-
+  /// The table's controller while dragging, to end the resize if this handle
+  /// goes away mid-drag (inherited lookups are not allowed in dispose).
+  TableInteractionController? _dragInteraction;
   @override
   void dispose() {
     _removeKeyHandler();
     _removeTooltip();
+    final interaction = _dragInteraction;
+    if (_dragActive && interaction != null) {
+      // Not during this frame's teardown: ending notifies the table.
+      WidgetsBinding.instance
+          .addPostFrameCallback((_) => interaction.endResize());
+    }
     super.dispose();
   }
 
@@ -162,6 +170,7 @@ class _TableColResizeHandleState extends State<TableColResizeHandle> {
       return;
     }
     _dragActive = true;
+    _dragInteraction = interaction;
     interaction.beginResize(
       widget.colIdx,
       widget.tableNode.getColWidth(widget.colIdx),
