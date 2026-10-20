@@ -55,7 +55,9 @@ class _TableViewState extends State<TableView> {
                     children: _buildColumns(context),
                   ),
                 ),
-                if (showResize)
+                if (showResize && touch)
+                  ..._buildTouchResizeGrip(interaction, topChrome)
+                else if (showResize)
                   ..._buildResizeHandles(interaction, hitWidth, topChrome),
                 ..._buildBorderHandles(interaction, topChrome),
               ],
@@ -186,6 +188,76 @@ class _TableViewState extends State<TableView> {
     }
 
     return handles;
+  }
+
+  /// Touch: one grip on the active column's right border, centered on the
+  /// caret's row (like the row menu), so it is in view in tall tables.
+  /// Full-height strips caught scrolls and text selection. Stays mounted for
+  /// the column being resized even if the caret moves.
+  List<Widget> _buildTouchResizeGrip(
+    TableInteractionController interaction,
+    double topChrome,
+  ) {
+    final col = interaction.resizingColIdx ??
+        (interaction.isActive ? interaction.activeCol : null);
+    if (col == null || col < 0 || col >= widget.tableNode.colsLen) {
+      return const [];
+    }
+    final borderWidth = widget.tableNode.config.borderWidth;
+    double x = tableBorderChrome + borderWidth;
+    for (var i = 0; i <= col; i++) {
+      x += interaction.previewWidthFor(i) ?? widget.tableNode.getColWidth(i);
+      x += borderWidth;
+    }
+    x -= borderWidth / 2;
+    final activeRow = interaction.activeRow;
+    final row = activeRow != null &&
+            activeRow >= 0 &&
+            activeRow < widget.tableNode.rowsLen
+        ? activeRow
+        : 0;
+    double y = topChrome + borderWidth;
+    for (var i = 0; i < row; i++) {
+      y += widget.tableNode.getRowHeight(i) + borderWidth;
+    }
+    y += widget.tableNode.getRowHeight(row) / 2;
+    const hitWidth = tableMobileResizeHitWidth;
+    final hitThickness = tableHandleHitThickness(context);
+    final height = context.select(
+          (Node n) => n.attributes[TableBlockKeys.colsHeight],
+        ) ??
+        widget.tableNode.colsHeight;
+    final resizing = interaction.resizingColIdx == col;
+    return [
+      if (resizing)
+        Positioned(
+          left: x - 1.5,
+          width: 3,
+          top: topChrome,
+          height: height,
+          child: IgnorePointer(
+            child: ColoredBox(
+              color: interaction.atMinWidth
+                  ? Colors.orange
+                  : widget.tableStyle.borderHoverColor,
+            ),
+          ),
+        ),
+      Positioned(
+        left: x - hitWidth / 2,
+        width: hitWidth,
+        top: y - hitThickness / 2,
+        height: hitThickness,
+        child: TableColResizeHandle(
+          key: ValueKey('table_col_resize_$col'),
+          tableNode: widget.tableNode,
+          editorState: widget.editorState,
+          colIdx: col,
+          touchGrip: true,
+          guideColor: widget.tableStyle.borderHoverColor,
+        ),
+      ),
+    ];
   }
 
   List<Widget> _buildResizeHandles(

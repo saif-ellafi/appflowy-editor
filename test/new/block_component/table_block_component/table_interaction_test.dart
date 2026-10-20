@@ -1,6 +1,7 @@
 import 'package:appflowy_editor/appflowy_editor.dart';
 import 'package:appflowy_editor/src/editor/block_component/table_block_component/table_action_handler.dart';
 import 'package:appflowy_editor/src/editor/block_component/table_block_component/table_action_menu.dart';
+import 'package:appflowy_editor/src/editor/block_component/table_block_component/table_col_border.dart';
 import 'package:appflowy_editor/src/editor/block_component/table_block_component/table_interaction.dart';
 import 'package:appflowy_editor/src/editor/block_component/table_block_component/table_view.dart';
 import 'package:flutter/gestures.dart';
@@ -380,7 +381,7 @@ void main() {
       await editor.dispose();
     });
 
-    testWidgets('mobile editing shows controls and wide resize overlays',
+    testWidgets('mobile editing shows controls and one resize grip',
         (tester) async {
       final tableNode = TableNode.fromList([
         ['a', 'c'],
@@ -391,18 +392,56 @@ void main() {
       await editor.startTesting(platform: TargetPlatform.android);
       await tester.pumpAndSettle();
 
+      // No resize zones until the caret is in the table.
       expect(
         find.byKey(const ValueKey('table_col_resize_leading')),
-        findsOneWidget,
+        findsNothing,
       );
-      expect(find.byKey(const ValueKey('table_col_resize_0')), findsOneWidget);
-      expect(find.byKey(const ValueKey('table_col_resize_1')), findsOneWidget);
-      expect(
-        tester.getSize(find.byKey(const ValueKey('table_col_resize_0'))).width,
-        tableMobileResizeHitWidth,
-      );
+      expect(find.byKey(const ValueKey('table_col_resize_0')), findsNothing);
+      expect(find.byType(TableResizeGrip), findsNothing);
       expect(find.byIcon(Icons.add), findsNothing);
       expect(find.byType(TableBorderHandle), findsNothing);
+
+      await activateTable(editor, tableNode);
+
+      // Only the active column's right border, as a visible grip.
+      expect(find.byKey(const ValueKey('table_col_resize_0')), findsOneWidget);
+      expect(find.byKey(const ValueKey('table_col_resize_1')), findsNothing);
+      expect(
+        find.byKey(const ValueKey('table_col_resize_leading')),
+        findsNothing,
+      );
+      expect(find.byType(TableResizeGrip), findsOneWidget);
+      expect(
+        tester.getSize(find.byKey(const ValueKey('table_col_resize_0'))),
+        const Size(tableMobileResizeHitWidth, tableMobileHandleHitThickness),
+      );
+      // On the column's right border, level with the caret's row menu.
+      var grip = tester.getCenter(find.byType(TableResizeGrip));
+      expect(
+        grip.dy,
+        closeTo(
+          tester.getCenter(find.byKey(const ValueKey('table_row_menu_0_0'))).dy,
+          0.5,
+        ),
+      );
+      final borderX = tester
+          .getCenter(find.byKey(const ValueKey('table_col_border_0_resizable')))
+          .dx;
+      expect(grip.dx, closeTo(borderX, 0.5));
+
+      // Follows the caret to another cell, down rows too.
+      await activateTable(editor, tableNode, col: 1, row: 1);
+      expect(find.byKey(const ValueKey('table_col_resize_0')), findsNothing);
+      expect(find.byKey(const ValueKey('table_col_resize_1')), findsOneWidget);
+      grip = tester.getCenter(find.byType(TableResizeGrip));
+      expect(
+        grip.dy,
+        closeTo(
+          tester.getCenter(find.byKey(const ValueKey('table_row_menu_0_1'))).dy,
+          0.5,
+        ),
+      );
 
       await activateTable(editor, tableNode);
 
@@ -459,6 +498,7 @@ void main() {
 
       await editor.startTesting(platform: TargetPlatform.android);
       await tester.pumpAndSettle();
+      await activateTable(editor, tableNode);
 
       final original = tableNode.getColWidth(0);
       final handle = find.byKey(const ValueKey('table_col_resize_0'));
@@ -469,7 +509,63 @@ void main() {
       );
       await tester.pumpAndSettle();
 
+      // Measured from touch-down, so the drag slop is not lost.
       expect(tableNode.getColWidth(0), closeTo(original + 50, 1));
+      expect(find.byKey(const ValueKey('table_col_resize_0')), findsOneWidget);
+      await editor.dispose();
+    });
+
+    testWidgets('mobile vertical swipe on the grip does not resize',
+        (tester) async {
+      final tableNode = TableNode.fromList([
+        ['a', 'c'],
+        ['b', 'd'],
+      ]);
+      final editor = tester.editor..addNode(tableNode.node);
+      editor.editorState.disableSealTimer = true;
+
+      await editor.startTesting(platform: TargetPlatform.android);
+      await tester.pumpAndSettle();
+      await activateTable(editor, tableNode);
+
+      final original = tableNode.getColWidth(0);
+      final handle = find.byKey(const ValueKey('table_col_resize_0'));
+      // Mostly vertical with a sideways wobble, like a thumb scroll.
+      await tester.drag(
+        handle,
+        const Offset(12, 120),
+        kind: PointerDeviceKind.touch,
+      );
+      await tester.pumpAndSettle();
+
+      expect(tableNode.getColWidth(0), original);
+      await editor.dispose();
+    });
+
+    testWidgets('mobile cell borders are not resize zones', (tester) async {
+      final tableNode = TableNode.fromList([
+        ['a', 'c'],
+        ['b', 'd'],
+      ]);
+      final editor = tester.editor..addNode(tableNode.node);
+      editor.editorState.disableSealTimer = true;
+
+      await editor.startTesting(platform: TargetPlatform.android);
+      await tester.pumpAndSettle();
+      await activateTable(editor, tableNode);
+
+      final original = tableNode.getColWidth(0);
+      // Sideways drag along the border, well below the grip.
+      final border = find.byKey(const ValueKey('table_col_border_0_resizable'));
+      final start = tester.getBottomRight(border) - const Offset(0, 10);
+      await tester.dragFrom(
+        start,
+        const Offset(50, 0),
+        kind: PointerDeviceKind.touch,
+      );
+      await tester.pumpAndSettle();
+
+      expect(tableNode.getColWidth(0), original);
       await editor.dispose();
     });
 

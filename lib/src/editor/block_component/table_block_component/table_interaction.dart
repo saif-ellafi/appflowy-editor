@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 const double tableDesktopResizeHitWidth = 12;
 const double tableMobileResizeHitWidth = 44;
+/// Visible touch resize grip (the hit box stays [tableMobileResizeHitWidth]).
+const double tableMobileResizeGripSize = 24;
 
 double tableResizeHitWidth(BuildContext context) {
   return tableIsTouchLayout(context)

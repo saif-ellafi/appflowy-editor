@@ -1,5 +1,6 @@
 import 'package:appflowy_editor/appflowy_editor.dart';
 import 'package:appflowy_editor/src/editor/block_component/table_block_component/table_interaction.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -39,6 +40,7 @@ class TableColResizeHandle extends StatefulWidget {
     required this.colIdx,
     required this.guideColor,
     this.invertDrag = false,
+    this.touchGrip = false,
   });
 
   final int colIdx;
@@ -48,6 +50,9 @@ class TableColResizeHandle extends StatefulWidget {
   /// Left-edge handle: dragging left widens the column, dragging right
   /// narrows it. Right-edge handles keep the opposite mapping.
   final bool invertDrag;
+  /// Touch: a visible grip that only takes clearly horizontal drags, so
+  /// scrolling and long-press selection win over resizing.
+  final bool touchGrip;
 
   @override
   State<TableColResizeHandle> createState() => _TableColResizeHandleState();
@@ -81,6 +86,31 @@ class _TableColResizeHandleState extends State<TableColResizeHandle> {
       lineColor = Colors.orange;
     } else {
       lineColor = widget.guideColor;
+    }
+
+    if (widget.touchGrip) {
+      return GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        // Measure from the touch-down point, not from where the slop ends.
+        dragStartBehavior: DragStartBehavior.down,
+        // No tap handler: the grip sits over cell text, and taps there
+        // still place the caret.
+        onHorizontalDragStart: (details) {
+          _startGlobalX = details.globalPosition.dx;
+          _tooltipPosition = details.globalPosition;
+          _beginDrag();
+        },
+        onHorizontalDragUpdate: (details) =>
+            _updateDrag(details.globalPosition),
+        onHorizontalDragEnd: (_) => _commitDrag(),
+        onHorizontalDragCancel: _cancelDrag,
+        child: Center(
+          child: TableResizeGrip(
+            color: dragging && !atMin ? widget.guideColor : null,
+            warning: atMin,
+          ),
+        ),
+      );
     }
 
     return MouseRegion(
@@ -279,5 +309,44 @@ class _TableColResizeHandleState extends State<TableColResizeHandle> {
     _tooltip?.remove();
     _tooltip = null;
     _tooltipInserted = false;
+  }
+}
+
+/// Touch resize mark: a small round plate with a two-way arrow, sitting on
+/// the column's right border.
+class TableResizeGrip extends StatelessWidget {
+  const TableResizeGrip({
+    super.key,
+    this.color,
+    this.warning = false,
+  });
+
+  /// Accent while dragging; null keeps the resting handle colors.
+  final Color? color;
+  /// At the minimum width.
+  final bool warning;
+
+  @override
+  Widget build(BuildContext context) {
+    final style = TableStyleScope.of(context);
+    final accent = warning ? Colors.orange : color;
+    return Container(
+      width: tableMobileResizeGripSize,
+      height: tableMobileResizeGripSize,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: style.handleBackgroundColor.withValues(alpha: 0.94),
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: accent ?? style.handlerColor.withValues(alpha: 0.22),
+          width: accent == null ? 1 : 2,
+        ),
+      ),
+      child: Icon(
+        Icons.swap_horiz,
+        size: 14,
+        color: accent ?? style.handlerColor.withValues(alpha: 0.7),
+      ),
+    );
   }
 }
