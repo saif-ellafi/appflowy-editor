@@ -677,21 +677,23 @@ class PdfHTMLEncoder {
       }
     }
 
-    return pw.Wrap(
-      children: [
-        pw.SizedBox(
-          width: double.infinity,
-          child: pw.RichText(
-            textAlign: textAlign,
-            text: pw.TextSpan(
-              children: textSpan,
-              style: pw.TextStyle(font: font, fontFallback: fontFallback),
-            ),
-          ),
+    // Spanning text breaks across pages. A Wrap only breaks between its
+    // children, so a paragraph taller than a page inside one never gets
+    // placed and MultiPage adds empty pages forever (release builds skip
+    // its maxPages check).
+    final text = pw.SizedBox(
+      width: double.infinity,
+      child: pw.RichText(
+        textAlign: textAlign,
+        overflow: pw.TextOverflow.span,
+        text: pw.TextSpan(
+          children: textSpan,
+          style: pw.TextStyle(font: font, fontFallback: fontFallback),
         ),
-        ...subNodes,
-      ],
+      ),
     );
+    if (subNodes.isEmpty) return text;
+    return pw.Wrap(children: [text, ...subNodes]);
   }
 
   static pw.TextStyle _assignTextDecorations(
