@@ -352,6 +352,9 @@ class _TableBlockComponentWidgetState extends State<TableBlockComponentWidget>
   Widget build(BuildContext context) {
     final scrollbarGutter =
         tableUsesTouchChrome(context) ? 0.0 : _desktopScrollbarGutter;
+    final baseThumbColor = ScrollbarTheme.of(context).thumbColor;
+    final fallbackThumbColor =
+        Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4);
     Widget child = TableStyleScope(
       style: widget.tableStyle,
       child: TableInteractionScope(
@@ -360,6 +363,13 @@ class _TableBlockComponentWidgetState extends State<TableBlockComponentWidget>
           data: Theme.of(context).copyWith(
             scrollbarTheme: ScrollbarTheme.of(context).copyWith(
               thickness: const WidgetStatePropertyAll(_scrollbarThickness),
+              // Half the theme's strength: a hint that the table scrolls,
+              // not a control competing with the cells.
+              thumbColor: WidgetStateProperty.resolveWith((states) {
+                final color =
+                    baseThumbColor?.resolve(states) ?? fallbackThumbColor;
+                return color.withValues(alpha: color.a * 0.5);
+              }),
               trackVisibility: const WidgetStatePropertyAll(false),
               trackColor: const WidgetStatePropertyAll(Colors.transparent),
               trackBorderColor: const WidgetStatePropertyAll(Colors.transparent),
@@ -383,7 +393,8 @@ class _TableBlockComponentWidgetState extends State<TableBlockComponentWidget>
             },
             child: Scrollbar(
               controller: _scrollController,
-              thumbVisibility: true,
+              // Read-only views show it only while scrolling.
+              thumbVisibility: editorState.editable,
               trackVisibility: false,
               interactive: false,
               thickness: _scrollbarThickness,
