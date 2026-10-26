@@ -202,6 +202,143 @@ void main() async {
         final node = editorState.getNodeAtPath([0])!;
         expect(node.delta!.toPlainText(), ''); // empty
       });
+
+      test('backspace when a lone table is selected', () async {
+        final built = TableNode.fromList([
+          ['Skill', 'Spot'],
+          ['Rank', '50'],
+        ]);
+        final editorState = EditorState(
+          document: Document.blank()..insert([0], [built.node]),
+        );
+        final last = TableNode(node: editorState.getNodeAtPath([0])!).getCell(1, 1).children.first;
+        unawaited(
+          editorState.updateSelectionWithReason(
+            Selection(
+              start: Position(path: [0]),
+              end: Position(path: last.path, offset: last.delta!.length),
+            ),
+            reason: SelectionUpdateReason.selectAll,
+          ),
+        );
+
+        final result = backspaceCommand.execute(editorState);
+
+        expect(result, KeyEventResult.handled);
+        expect(editorState.document.root.children.length, 1);
+        expect(editorState.document.root.children.single.type, ParagraphBlockKeys.type);
+        expect(editorState.document.root.children.single.delta!.toPlainText(), '');
+        expect(editorState.selection, Selection.collapsed(Position(path: [0])));
+      });
+
+      test('backspace on a blank line after a table removes the line', () async {
+        final built = TableNode.fromList([
+          ['Skill'],
+        ]);
+        final editorState = EditorState(
+          document: Document.blank()
+            ..insert([0], [
+              built.node,
+              paragraphNode(),
+            ]),
+        );
+        editorState.selection = Selection.collapsed(Position(path: [1]));
+
+        final result = backspaceCommand.execute(editorState);
+
+        expect(result, KeyEventResult.handled);
+        expect(editorState.document.root.children, hasLength(1));
+        expect(editorState.document.root.children.single.type, TableBlockKeys.type);
+        // The caret lands at the end of the last cell, where typing works.
+        expect(
+          editorState.selection,
+          Selection.collapsed(Position(path: [0, 0, 0], offset: 'Skill'.length)),
+        );
+      });
+
+      test('backspace with the caret after a table steps into it', () async {
+        final built = TableNode.fromList([
+          ['Skill', 'Spot'],
+          ['Rank', '50'],
+        ]);
+        final editorState = EditorState(
+          document: Document.blank()
+            ..insert([0], [
+              paragraphNode(text: 'Top'),
+              built.node,
+            ]),
+        );
+        editorState.selection = Selection.collapsed(Position(path: [1], offset: 1));
+
+        final result = backspaceCommand.execute(editorState);
+
+        expect(result, KeyEventResult.handled);
+        expect(editorState.document.root.children, hasLength(2));
+        expect(editorState.getNodeAtPath([1])!.type, TableBlockKeys.type);
+        final last = TableNode(node: editorState.getNodeAtPath([1])!).getCell(1, 1).children.first;
+        expect(
+          editorState.selection,
+          Selection.collapsed(Position(path: last.path, offset: '50'.length)),
+        );
+      });
+
+      test('backspace on a blank line above a table puts the caret in its first cell', () async {
+        final built = TableNode.fromList([
+          ['Skill', 'Spot'],
+          ['Rank', '50'],
+        ]);
+        final editorState = EditorState(
+          document: Document.blank()
+            ..insert([0], [
+              paragraphNode(),
+              built.node,
+            ]),
+        );
+        editorState.selection = Selection.collapsed(Position(path: [0]));
+
+        final result = backspaceCommand.execute(editorState);
+        await Future.delayed(Duration.zero);
+
+        expect(result, KeyEventResult.handled);
+        expect(editorState.document.root.children, hasLength(1));
+        expect(editorState.selection, Selection.collapsed(Position(path: [0, 0, 0])));
+      });
+
+      test('backspace on a blank line between paragraphs removes the line', () async {
+        final editorState = EditorState(
+          document: Document.blank()
+            ..insert([0], [
+              paragraphNode(text: 'Above'),
+              paragraphNode(),
+              paragraphNode(text: 'Below'),
+            ]),
+        );
+        editorState.selection = Selection.collapsed(Position(path: [1]));
+
+        final result = backspaceCommand.execute(editorState);
+
+        expect(result, KeyEventResult.handled);
+        expect(editorState.document.root.children, hasLength(2));
+        expect(editorState.getNodeAtPath([0])!.delta!.toPlainText(), 'Above');
+        expect(editorState.getNodeAtPath([1])!.delta!.toPlainText(), 'Below');
+        expect(
+          editorState.selection,
+          Selection.collapsed(Position(path: [0], offset: 'Above'.length)),
+        );
+      });
+
+      test('backspace on the only blank line keeps it', () async {
+        final editorState = EditorState(
+          document: Document.blank()..insert([0], [paragraphNode()]),
+        );
+        editorState.selection = Selection.collapsed(Position(path: [0]));
+
+        final result = backspaceCommand.execute(editorState);
+
+        expect(result, KeyEventResult.ignored);
+        expect(editorState.document.root.children, hasLength(1));
+        expect(editorState.getNodeAtPath([0])!.delta!.toPlainText(), '');
+      });
     });
 
     group('backspaceCommand - not collapsed selection', () {

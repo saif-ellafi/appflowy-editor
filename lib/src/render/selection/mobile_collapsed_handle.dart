@@ -14,6 +14,7 @@ class MobileCollapsedHandle extends StatefulWidget {
     this.handleWidth = 2.0,
     this.enableHapticFeedbackOnAndroid = true,
     this.onDragging,
+    this.passThroughLeftOf = double.negativeInfinity,
   });
 
   final Rect rect;
@@ -23,6 +24,10 @@ class MobileCollapsedHandle extends StatefulWidget {
   final double handleBallWidth;
   final bool enableHapticFeedbackOnAndroid;
   final ValueChanged<bool>? onDragging;
+
+  /// Touches left of this x, in [rect]'s coordinates, reach what lies under
+  /// the handle.
+  final double passThroughLeftOf;
 
   @override
   State<MobileCollapsedHandle> createState() => _MobileCollapsedHandleState();
@@ -38,6 +43,7 @@ class _MobileCollapsedHandleState extends State<MobileCollapsedHandle> {
         rect: widget.rect,
         handleWidth: widget.handleWidth,
         debugPaintSizeEnabled: debugInfo.debugPaintSizeEnabled,
+        passThroughLeftOf: widget.passThroughLeftOf,
       );
     } else if (PlatformExtension.isAndroid) {
       return _AndroidCollapsedHandle(
@@ -49,6 +55,7 @@ class _MobileCollapsedHandleState extends State<MobileCollapsedHandle> {
         enableHapticFeedbackOnAndroid: widget.enableHapticFeedbackOnAndroid,
         debugPaintSizeEnabled: debugInfo.debugPaintSizeEnabled,
         onDragging: widget.onDragging,
+        passThroughLeftOf: widget.passThroughLeftOf,
       );
     }
     throw UnsupportedError('Unsupported platform');
@@ -61,12 +68,14 @@ class _IOSCollapsedHandle extends StatelessWidget {
     required this.rect,
     this.handleWidth = 2.0,
     this.debugPaintSizeEnabled = false,
+    required this.passThroughLeftOf,
   });
 
   final Rect rect;
   final LayerLink layerLink;
   final double handleWidth;
   final bool debugPaintSizeEnabled;
+  final double passThroughLeftOf;
 
   @override
   Widget build(BuildContext context) {
@@ -92,19 +101,22 @@ class _IOSCollapsedHandle extends StatelessWidget {
         link: layerLink,
         offset: adjustedRect.topLeft,
         showWhenUnlinked: false,
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            Positioned(
-              child: DragHandle(
-                handleHeight: adjustedRect.height,
-                handleType: HandleType.collapsed,
-                handleColor: Colors.transparent,
-                handleWidth: adjustedRect.width,
-                debugPaintSizeEnabled: debugPaintSizeEnabled,
+        child: IgnoreHitsLeftOf(
+          left: passThroughLeftOf - adjustedRect.left,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Positioned(
+                child: DragHandle(
+                  handleHeight: adjustedRect.height,
+                  handleType: HandleType.collapsed,
+                  handleColor: Colors.transparent,
+                  handleWidth: adjustedRect.width,
+                  debugPaintSizeEnabled: debugPaintSizeEnabled,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -121,6 +133,7 @@ class _AndroidCollapsedHandle extends StatelessWidget {
     this.enableHapticFeedbackOnAndroid = true,
     this.debugPaintSizeEnabled = false,
     this.onDragging,
+    required this.passThroughLeftOf,
   });
 
   final Rect rect;
@@ -131,6 +144,7 @@ class _AndroidCollapsedHandle extends StatelessWidget {
   final bool enableHapticFeedbackOnAndroid;
   final bool debugPaintSizeEnabled;
   final ValueChanged<bool>? onDragging;
+  final double passThroughLeftOf;
 
   @override
   Widget build(BuildContext context) {
@@ -156,22 +170,25 @@ class _AndroidCollapsedHandle extends StatelessWidget {
         link: layerLink,
         offset: adjustedRect.topLeft,
         showWhenUnlinked: false,
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            Positioned(
-              top: 4.0,
-              child: DragHandle(
-                handleHeight: adjustedRect.height,
-                handleType: HandleType.collapsed,
-                handleColor: handleColor,
-                handleWidth: adjustedRect.width,
-                handleBallWidth: handleBallWidth,
-                debugPaintSizeEnabled: debugPaintSizeEnabled,
-                onDragging: onDragging,
+        child: IgnoreHitsLeftOf(
+          left: passThroughLeftOf - adjustedRect.left,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Positioned(
+                top: 4.0,
+                child: DragHandle(
+                  handleHeight: adjustedRect.height,
+                  handleType: HandleType.collapsed,
+                  handleColor: handleColor,
+                  handleWidth: adjustedRect.width,
+                  handleBallWidth: handleBallWidth,
+                  debugPaintSizeEnabled: debugPaintSizeEnabled,
+                  onDragging: onDragging,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

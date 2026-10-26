@@ -115,6 +115,7 @@
   "rowDuplicate": "Duplicate row",
   "colClear": "Clear column",
   "rowClear": "Clear row",
+  "tableRemove": "Delete table",
   "slashPlaceHolder": "Enter a / to insert a block, or start typing",
   "textAlignLeft": "Align Left",
   "textAlignCenter": "Align Center",

@@ -65,6 +65,17 @@ extension TextTransforms on EditorState {
       return apply(transaction);
     }
 
+    // After such a block, the empty line goes below it. Its children (a
+    // table's cells) stay with it.
+    if (node.delta == null) {
+      final transaction = this.transaction
+        ..insertNode(node.path.next, paragraphNode())
+        ..afterSelection = Selection.collapsed(
+          Position(path: node.path.next),
+        );
+      return apply(transaction);
+    }
+
     // Get the transaction and the path of the next node.
     final transaction = this.transaction;
     final next = position.path.next;

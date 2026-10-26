@@ -36,10 +36,19 @@ extension EditorCopyPaste on EditorState {
     // if the node is empty paragraph (default), replace it with the inserted node.
     if (delta.isEmpty && node.type == ParagraphBlockKeys.type) {
       if (insertedDelta == null) {
-        // Non-delta blocks cannot own the original paragraph's children, and
-        // the table root is not a useful caret target.
+        // A table takes the empty line's place. A line is left after it only
+        // when nothing else follows, and the caret goes there so typing and
+        // the keyboard have a text target. Other blocks always leave a line.
+        final isTable = insertedNode.type == TableBlockKeys.type;
+        final leaveLine = !isTable || node.next == null;
         transaction
-          ..insertNodes(selection.end.path, [insertedNode, paragraphNode()])
+          ..insertNodes(
+            selection.end.path,
+            [
+              insertedNode,
+              if (leaveLine) paragraphNode(),
+            ],
+          )
           ..deleteNode(node)
           ..afterSelection = Selection.collapsed(
             Position(path: selection.end.path.next),
@@ -245,8 +254,14 @@ void _insertBlocksAtCaret(
 
   final before = delta.slice(0, selection.startIndex);
   final after = delta.slice(selection.endIndex);
-  final needsTrailingParagraph =
-      after.isNotEmpty || blocks.last.delta == null;
+  // A table grows an empty paragraph only when it would be the last block.
+  // Text that was after the caret still needs its paragraph.
+  final tableAtEnd = blocks.last.type == TableBlockKeys.type;
+  final needsTrailingParagraph = after.isNotEmpty ||
+      (blocks.last.delta == null && !tableAtEnd) ||
+      (tableAtEnd && after.isEmpty && node.next == null);
+  final caretOnFollowing =
+      tableAtEnd && !needsTrailingParagraph && node.next != null;
   final afterNode = paragraphNode(
     delta: after,
     children: before.isEmpty
@@ -257,25 +272,29 @@ void _insertBlocksAtCaret(
   final caretIndex = needsTrailingParagraph
       ? blocks.length
       : blocks.length - 1;
-  final caretOffset =
-      needsTrailingParagraph ? 0 : (blocks.last.delta?.length ?? 0);
+  final caretOffset = needsTrailingParagraph
+      ? 0
+      : (blocks.last.delta?.length ??
+          (blocks.last.type == TableBlockKeys.type ? 1 : 0));
+
+  final caretPath = caretOnFollowing
+      ? _pathPlus(node.path, blocks.length + (before.isEmpty ? 0 : 1))
+      : _pathPlus(node.path, caretIndex + (before.isEmpty ? 0 : 1));
+  final resolvedOffset = caretOnFollowing ? 0 : caretOffset;
 
   if (before.isEmpty) {
     transaction
       ..insertNodes(node.path, toInsert)
       ..deleteNode(node)
       ..afterSelection = Selection.collapsed(
-        Position(path: _pathPlus(node.path, caretIndex), offset: caretOffset),
+        Position(path: caretPath, offset: resolvedOffset),
       );
   } else {
     transaction
       ..updateNode(node, {blockComponentDelta: before.toJson()})
       ..insertNodes(node.path.next, toInsert)
       ..afterSelection = Selection.collapsed(
-        Position(
-          path: _pathPlus(node.path, caretIndex + 1),
-          offset: caretOffset,
-        ),
+        Position(path: caretPath, offset: resolvedOffset),
       );
   }
 }

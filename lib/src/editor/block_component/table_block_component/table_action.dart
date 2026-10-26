@@ -30,6 +30,31 @@ class TableActions {
     }
   }
 
+  /// Removes the whole table. An empty line takes its place, with the caret
+  /// on it, so there is always somewhere to type. With [keepKeyboardClosed],
+  /// a closed soft keyboard stays down until the next tap in the text.
+  static void deleteTable(
+    Node node,
+    EditorState editorState, {
+    bool keepKeyboardClosed = false,
+  }) {
+    final path = node.path;
+    final transaction = editorState.transaction
+      ..insertNode(path, paragraphNode())
+      ..deleteNode(node)
+      ..afterSelection = Selection.collapsed(Position(path: path));
+    if (keepKeyboardClosed) {
+      transaction.selectionExtraInfo = {
+        selectionExtraInfoDoNotAttachTextService: true,
+      };
+    }
+    editorState.apply(transaction);
+    // Later edits must reach the keyboard as usual.
+    if (keepKeyboardClosed) {
+      editorState.selectionExtraInfo = null;
+    }
+  }
+
   static void duplicate(
     Node node,
     int position,
@@ -218,7 +243,6 @@ void _deleteCol(Node tableNode, int col, EditorState editorState) {
       transaction.insertNode(tableNode.path, emptyParagraph);
     }
     transaction.deleteNode(tableNode);
-    tableNode.dispose();
   } else {
     final List<Node> nodes = [];
     for (var i = 0; i < rowsLen; i++) {
@@ -246,7 +270,6 @@ void _deleteRow(Node tableNode, int row, EditorState editorState) {
       transaction.insertNode(tableNode.path, emptyParagraph);
     }
     transaction.deleteNode(tableNode);
-    tableNode.dispose();
   } else {
     final List<Node> nodes = [];
     for (var i = 0; i < colsLen; i++) {

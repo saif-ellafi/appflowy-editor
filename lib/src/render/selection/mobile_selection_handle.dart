@@ -83,16 +83,17 @@ class MobileSelectionHandle extends StatelessWidget {
           handleHeight: visualRect.height,
           handleWidth: handleWidth,
           handleBallWidth: handleBallWidth,
+          visualInset: touchRect.width - visualRect.width,
         ),
       ),
     );
   }
 
-  /// Pads [r] outward so that both axes are at least [minSize], anchoring the
-  /// expansion away from the visible handle ball so the ball stays put on
-  /// screen. For the left handle the ball sits at the left of [r], so we grow
-  /// to the right; for the right handle we grow to the left. We always grow
-  /// downward, since the ball lives below the text baseline.
+  /// Pads [r] outward so that both axes are at least [minSize]. Each handle
+  /// grows away from the selection: grown toward each other, the two zones
+  /// overlap over a short word and the right handle, painted on top, takes
+  /// the left handle's drags. The handle insets its ball by the added width.
+  /// We always grow downward, since the ball lives below the text baseline.
   Rect _expandToMinTouchTarget(Rect r, {required double minSize}) {
     final extraW = math.max(0.0, minSize - r.width);
     final extraH = math.max(0.0, minSize - r.height);
@@ -102,13 +103,9 @@ class MobileSelectionHandle extends StatelessWidget {
     double width = r.width;
     if (extraW > 0) {
       if (handleType == HandleType.left) {
-        // Ball is at r.left, grow rightward.
-        width += extraW;
-      } else {
-        // Ball is at r.right, grow leftward.
         left -= extraW;
-        width += extraW;
       }
+      width += extraW;
     }
 
     return Rect.fromLTWH(left, r.top, width, r.height + extraH);

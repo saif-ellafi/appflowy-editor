@@ -123,6 +123,63 @@ void main() async {
       await editor.dispose();
     });
 
+    testWidgets('undo brings back a table removed with its last row',
+        (tester) async {
+      final tableNode = TableNode.fromList([
+        ['1'],
+      ]);
+      final editor = tester.editor..addNode(tableNode.node);
+
+      await editor.startTesting();
+      await tester.pumpAndSettle();
+
+      TableActions.delete(
+        tableNode.node,
+        0,
+        editor.editorState,
+        TableDirection.row,
+      );
+      await tester.pumpAndSettle(const Duration(milliseconds: 200));
+      expect(editor.document.root.children.first.type, isNot(TableBlockKeys.type));
+
+      editor.editorState.undoManager.undo();
+      await tester.pumpAndSettle(const Duration(milliseconds: 200));
+
+      expect(tester.takeException(), isNull);
+      expect(editor.document.root.children.first.type, TableBlockKeys.type);
+      await editor.dispose();
+    });
+
+    testWidgets('delete table leaves a line and the other table', (tester) async {
+      final first = TableNode.fromList([
+        ['1'],
+      ]);
+      final second = TableNode.fromList([
+        ['2'],
+      ]);
+      final editor = tester.editor
+        ..addNode(first.node)
+        ..addNode(second.node);
+
+      await editor.startTesting();
+      await tester.pumpAndSettle();
+
+      TableActions.deleteTable(first.node, editor.editorState);
+      await tester.pumpAndSettle(const Duration(milliseconds: 200));
+
+      final children = editor.document.root.children;
+      expect(children.length, 2);
+      expect(children.first.type, ParagraphBlockKeys.type);
+      expect(children.last.id, second.node.id);
+      expect(editor.selection, Selection.collapsed(Position(path: [0])));
+
+      editor.editorState.undoManager.undo();
+      await tester.pumpAndSettle(const Duration(milliseconds: 200));
+      expect(tester.takeException(), isNull);
+      expect(editor.document.root.children.map((n) => n.type), [TableBlockKeys.type, TableBlockKeys.type]);
+      await editor.dispose();
+    });
+
     testWidgets('duplicate column', (tester) async {
       var tableNode = TableNode.fromList([
         ['1', '2'],

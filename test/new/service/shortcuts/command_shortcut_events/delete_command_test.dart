@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:appflowy_editor/appflowy_editor.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -263,6 +265,34 @@ void main() async {
 
         expect(editorState.getNodeAtPath([0])?.delta?.toPlainText(), text);
         expect(editorState.getNodeAtPath([0, 0])?.delta?.toPlainText(), text);
+      });
+
+      test('delete after select all on a lone table leaves a paragraph', () async {
+        final built = TableNode.fromList([
+          ['Skill', 'Spot'],
+          ['Rank', '50'],
+        ]);
+        final editorState = EditorState(
+          document: Document.blank()..insert([0], [built.node]),
+        );
+        final last = TableNode(node: editorState.getNodeAtPath([0])!).getCell(1, 1).children.first;
+        unawaited(
+          editorState.updateSelectionWithReason(
+            Selection(
+              start: Position(path: [0]),
+              end: Position(path: last.path, offset: last.delta!.length),
+            ),
+            reason: SelectionUpdateReason.selectAll,
+          ),
+        );
+
+        final result = deleteCommand.execute(editorState);
+
+        expect(result, KeyEventResult.handled);
+        expect(editorState.document.root.children.length, 1);
+        expect(editorState.document.root.children.single.type, ParagraphBlockKeys.type);
+        expect(editorState.document.root.children.single.delta!.toPlainText(), '');
+        expect(editorState.selection, Selection.collapsed(Position(path: [0])));
       });
     });
   });

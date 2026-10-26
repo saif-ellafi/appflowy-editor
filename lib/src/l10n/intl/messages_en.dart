@@ -259,6 +259,7 @@ class MessageLookup extends MessageLookupByLibrary {
             "Enter a / to insert a block, or start typing"),
         "strikethrough": MessageLookupByLibrary.simpleMessage("Strikethrough"),
         "table": MessageLookupByLibrary.simpleMessage("Table"),
+        "tableRemove": MessageLookupByLibrary.simpleMessage("Delete table"),
         "text": MessageLookupByLibrary.simpleMessage("Text"),
         "textAlignCenter": MessageLookupByLibrary.simpleMessage("Align Center"),
         "textAlignLeft": MessageLookupByLibrary.simpleMessage("Align Left"),

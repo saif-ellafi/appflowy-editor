@@ -99,9 +99,40 @@ class TableCelBlockWidget extends BlockComponentStatefulWidget {
 
 class _TableCeBlockWidgetState extends State<TableCelBlockWidget> {
   late final editorState = Provider.of<EditorState>(context, listen: false);
+  bool _restoringLine = false;
+
+  /// A cell without a line has nowhere to tap or type, so it gets one back.
+  /// It stays out of the undo history, which knows nothing of its absence.
+  void _restoreLine() {
+    if (_restoringLine) {
+      return;
+    }
+    _restoringLine = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _restoringLine = false;
+      final node = widget.node;
+      if (!mounted ||
+          !editorState.editable ||
+          node.parent == null ||
+          node.children.isNotEmpty) {
+        return;
+      }
+      final transaction = editorState.transaction
+        ..insertNode(node.path + [0], paragraphNode());
+      editorState.apply(
+        transaction,
+        options: const ApplyOptions(source: TransactionSource.none),
+        withUpdateSelection: false,
+      );
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
+    if (widget.node.children.isEmpty) {
+      _restoreLine();
+    }
+
     return Container(
       constraints: BoxConstraints(
         minHeight: context.select((Node n) => n.cellHeight),

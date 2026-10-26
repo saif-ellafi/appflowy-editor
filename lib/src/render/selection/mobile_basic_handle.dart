@@ -5,6 +5,7 @@ import 'package:appflowy_editor/src/editor/editor_component/service/selection/mo
 import 'package:appflowy_editor/src/editor/util/platform_extension.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
@@ -98,7 +99,12 @@ class DragHandle extends _IDragHandle {
     required super.handleType,
     super.debugPaintSizeEnabled,
     super.onDragging,
+    this.visualInset = 0.0,
   });
+
+  /// How far the ball sits in from the outer edge of a left or right
+  /// handle's touch zone, which grows outward past the ball.
+  final double visualInset;
 
   @override
   Widget build(BuildContext context) {
@@ -148,6 +154,7 @@ class DragHandle extends _IDragHandle {
       handleType: handleType,
       debugPaintSizeEnabled: debugPaintSizeEnabled,
       onDragging: onDragging,
+      visualInset: visualInset,
     );
   }
 }
@@ -166,6 +173,7 @@ class _SelectionDragHandle extends StatefulWidget {
     required this.handleType,
     required this.debugPaintSizeEnabled,
     required this.onDragging,
+    required this.visualInset,
   });
 
   final double handleHeight;
@@ -175,6 +183,7 @@ class _SelectionDragHandle extends StatefulWidget {
   final HandleType handleType;
   final bool debugPaintSizeEnabled;
   final ValueChanged<bool>? onDragging;
+  final double visualInset;
 
   @override
   State<_SelectionDragHandle> createState() => _SelectionDragHandleState();
@@ -216,7 +225,8 @@ class _SelectionDragHandleState extends State<_SelectionDragHandle> {
     }
 
     final visualEdgeOffset =
-        PlatformExtension.isIOS ? -widget.handleWidth : 0.0;
+        (PlatformExtension.isIOS ? -widget.handleWidth : 0.0) +
+            widget.visualInset;
     final ballWidth = widget.handleBallWidth;
     double dyOffset = 0.0;
     if (PlatformExtension.isIOS) {
@@ -620,6 +630,37 @@ class _AndroidDragHandleVisual extends StatelessWidget {
       ],
     );
   }
+}
+
+/// Lets touches left of [left] fall through to what lies under a handle,
+/// such as a table row's menu handle beside a line's start.
+class IgnoreHitsLeftOf extends SingleChildRenderObjectWidget {
+  const IgnoreHitsLeftOf({
+    super.key,
+    required this.left,
+    super.child,
+  });
+
+  final double left;
+
+  @override
+  RenderObject createRenderObject(BuildContext context) =>
+      _RenderIgnoreHitsLeftOf(left);
+
+  @override
+  void updateRenderObject(BuildContext context, RenderObject renderObject) {
+    (renderObject as _RenderIgnoreHitsLeftOf).left = left;
+  }
+}
+
+class _RenderIgnoreHitsLeftOf extends RenderProxyBox {
+  _RenderIgnoreHitsLeftOf(this.left);
+
+  double left;
+
+  @override
+  bool hitTest(BoxHitTestResult result, {required Offset position}) =>
+      position.dx >= left && super.hitTest(result, position: position);
 }
 
 extension on DragStartDetails {

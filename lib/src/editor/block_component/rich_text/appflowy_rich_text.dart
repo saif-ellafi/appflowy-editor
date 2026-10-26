@@ -685,7 +685,27 @@ class _AppFlowyRichTextState extends State<AppFlowyRichText>
 
     final normalized = selection.normalized;
     final path = widget.node.path;
-    if (path < normalized.start.path || path > normalized.end.path) {
+    final page = pageOf(widget.node);
+    final span = tableCellSpan(page, selection);
+    final inCell = span != null && nodeInCellSpan(widget.node, span);
+    // A cell stored down the column can sit on the path between two cells
+    // in the same row. The selection is the rectangle, read across the row.
+    if (span != null && nodeInTable(widget.node, span.table) && !inCell) {
+      return null;
+    }
+    // With one end in this table, the cells go row by row from that end.
+    final table = span == null ? enclosingTable(widget.node) : null;
+    final edge = table == null
+        ? null
+        : tableEdges(page, normalized)
+            .where((edge) => edge.table.id == table.id)
+            .firstOrNull;
+    if (edge != null) {
+      if (!edge.containsNode(widget.node)) {
+        return null;
+      }
+    } else if (!inCell &&
+        (path < normalized.start.path || path > normalized.end.path)) {
       return null;
     }
 

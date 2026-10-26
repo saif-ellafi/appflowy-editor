@@ -76,6 +76,19 @@ CommandShortcutEventHandler _backspaceInCollapsedSelection = (editorState) {
     return KeyEventResult.handled;
   }
 
+  // After a table, backspace steps into its last cell. Deleting the whole
+  // table on one key is too easy to do by accident.
+  if (node.type == TableBlockKeys.type) {
+    final last = _lastTextInTable(node);
+    if (last != null) {
+      editorState.selection = Selection.collapsed(
+        Position(path: last.path, offset: last.delta!.length),
+      );
+    }
+
+    return KeyEventResult.handled;
+  }
+
   // delete the entire node if the delta is empty
   if (node.delta == null) {
     if (node.next == null) {
@@ -153,6 +166,33 @@ CommandShortcutEventHandler _backspaceInCollapsedSelection = (editorState) {
               offset: prev.delta!.length,
             ),
           );
+      } else if (node.delta!.isEmpty &&
+          node.children.isEmpty &&
+          node.parent?.type != TableCellBlockKeys.type &&
+          (node.previous != null || node.next != null)) {
+        // An empty line with nothing to merge into (a table above, or a
+        // leading blank line) still goes away. The only line in the
+        // document stays, so there is a place to type. Next to a table, the
+        // caret goes into the nearest cell rather than onto the table.
+        final previous = node.previous;
+        final next = node.next;
+        final Position caret;
+        if (previous != null && previous.type == TableBlockKeys.type && _lastTextInTable(previous) != null) {
+          final last = _lastTextInTable(previous)!;
+          caret = Position(path: last.path, offset: last.delta!.length);
+        } else if (previous == null && next != null && next.type == TableBlockKeys.type && _firstTextInTable(next) != null) {
+          // The table moves up into this line's place.
+          final first = _firstTextInTable(next)!;
+          caret = Position(path: [...node.path, ...first.path.sublist(next.path.length)]);
+        } else {
+          caret = Position(
+            path: previous?.path ?? node.path,
+            offset: previous == null ? 0 : (previous.delta?.length ?? 1),
+          );
+        }
+        transaction
+          ..deleteNode(node)
+          ..afterSelection = Selection.collapsed(caret);
       } else {
         // do nothing if there is no previous node contains delta.
         return KeyEventResult.ignored;
@@ -204,18 +244,19 @@ CommandShortcutEventHandler _backspaceInSelectAll = (editorState) {
     return KeyEventResult.ignored;
   }
 
-  final transaction = editorState.transaction;
-  final nodes = editorState.getNodesInSelection(selection);
-  transaction.deleteNodes(nodes);
-
-  // Insert a new paragraph node to avoid locking the editor
-  transaction.insertNode(
-    editorState.document.root.children.first.path,
-    paragraphNode(),
-  );
-  transaction.afterSelection = Selection.collapsed(Position(path: [0]));
-
-  editorState.apply(transaction);
+  editorState.leaveOneEmptyParagraph();
 
   return KeyEventResult.handled;
 };
+
+Node? _lastTextInTable(Node table) {
+  final cells = cellsInReadingOrder(table);
+
+  return cells.isEmpty ? null : lastTextIn(cells.last);
+}
+
+Node? _firstTextInTable(Node table) {
+  final cells = cellsInReadingOrder(table);
+
+  return cells.isEmpty ? null : firstTextIn(cells.first);
+}

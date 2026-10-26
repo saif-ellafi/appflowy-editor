@@ -1,11 +1,9 @@
 import 'package:appflowy_editor/appflowy_editor.dart';
 import 'package:appflowy_editor/src/editor/block_component/table_block_component/util.dart';
-import 'package:flutter/foundation.dart';
+import 'package:appflowy_editor/src/editor/util/platform_extension.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/scheduler.dart';
-
 const double _menuWidth = 200;
-const double _menuHeight = 230;
+const double _menuHeight = 275;
 const double _menuGap = 6;
 
 void showActionMenu(
@@ -21,44 +19,32 @@ void showActionMenu(
     return;
   }
 
-  // Free vertical space so the popup can sit near the handle instead of under
-  // the soft keyboard. Positional chrome deserves a positional menu.
-  FocusManager.instance.primaryFocus?.unfocus();
+  // The soft keyboard would cover the menu, so it goes down and stays down
+  // (the actions keep it closed) until the next tap in the text. The caret
+  // and focus stay, and with them the handles. The menu is placed for the
+  // screen without the keyboard.
+  if (PlatformExtension.isMobile) {
+    editorState.service.keyboardService?.closeKeyboard();
+  }
 
   final anchor = renderObject.localToGlobal(Offset.zero) & renderObject.size;
   final media = MediaQuery.of(context);
-
-  void present() {
-    if (!context.mounted) {
-      return;
-    }
-    final latestMedia = MediaQuery.of(context);
-    final placement = _placeNearAnchor(
-      anchor: anchor,
-      menuSize: const Size(_menuWidth, _menuHeight),
-      viewport: latestMedia.size,
-      padding: latestMedia.padding,
-      // After unfocus, insets may still be animating down; prefer the smaller
-      // remaining keyboard so we don't leave a huge empty gap.
-      keyboardInset: latestMedia.viewInsets.bottom,
-    );
-    _insertActionOverlay(
-      context,
-      style,
-      node: node,
-      editorState: editorState,
-      position: position,
-      dir: dir,
-      placement: placement,
-    );
-  }
-
-  // Let one frame clear (or shrink) the keyboard before measuring.
-  if (media.viewInsets.bottom > 0) {
-    SchedulerBinding.instance.addPostFrameCallback((_) => present());
-  } else {
-    present();
-  }
+  final placement = _placeNearAnchor(
+    anchor: anchor,
+    menuSize: const Size(_menuWidth, _menuHeight),
+    viewport: media.size,
+    padding: media.padding,
+    keyboardInset: 0,
+  );
+  _insertActionOverlay(
+    context,
+    style,
+    node: node,
+    editorState: editorState,
+    position: position,
+    dir: dir,
+    placement: placement,
+  );
 }
 
 void _insertActionOverlay(
@@ -262,6 +248,18 @@ List<Widget> _menuActions(
         dismiss();
       },
     ),
+    const Divider(height: 9, thickness: 1, indent: 8, endIndent: 8),
+    _menuItem(
+      context,
+      style,
+      AppFlowyEditorL10n.current.tableRemove,
+      Icons.delete_forever,
+      () {
+        TableActions.deleteTable(node, editorState, keepKeyboardClosed: true);
+        dismiss();
+      },
+      foreground: Theme.of(context).colorScheme.error,
+    ),
   ];
 }
 
@@ -305,9 +303,10 @@ Widget _menuItem(
   TableStyle style,
   String text,
   IconData icon,
-  Function() action,
-) {
-  final foreground = style.menuForegroundColor ??
+  Function() action, {
+  Color? foreground,
+}) {
+  foreground ??= style.menuForegroundColor ??
       Theme.of(context).textTheme.labelLarge?.color;
   return SizedBox(
     height: 36,

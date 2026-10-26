@@ -1201,6 +1201,16 @@ class AppFlowyEditorLocalizations {
     );
   }
 
+  /// `Delete table`
+  String get tableRemove {
+    return Intl.message(
+      'Delete table',
+      name: 'tableRemove',
+      desc: '',
+      args: [],
+    );
+  }
+
   /// `Enter a / to insert a block, or start typing`
   String get slashPlaceHolder {
     return Intl.message(

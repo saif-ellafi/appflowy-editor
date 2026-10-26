@@ -266,6 +266,38 @@ class _DesktopSelectionServiceWidgetState
     throw UnimplementedError();
   }
 
+  /// A click in the empty space under a table that ends the document opens a
+  /// paragraph there. Otherwise the closest hit is the last cell, and there is
+  /// no way to start writing below the table without pressing Enter first.
+  bool _openLineBelowLastTable(Offset offset) {
+    // Shift+click extends the selection instead.
+    if (HardwareKeyboard.instance.isShiftPressed) {
+      return false;
+    }
+    final children = editorState.document.root.children;
+    if (children.isEmpty) {
+      return false;
+    }
+    final last = children.last;
+    if (last.type != TableBlockKeys.type) {
+      return false;
+    }
+    final box = last.renderBox;
+    if (box == null || !box.attached || !box.hasSize) {
+      return false;
+    }
+    final bottom = box.localToGlobal(Offset(0, box.size.height)).dy;
+    if (offset.dy <= bottom) {
+      return false;
+    }
+    final transaction = editorState.transaction
+      ..insertNode(last.path.next, paragraphNode())
+      ..afterSelection = Selection.collapsed(Position(path: last.path.next));
+    editorState.apply(transaction);
+
+    return true;
+  }
+
   void _onTapDown(TapDownDetails details) {
     _clearContextMenu();
 
@@ -281,6 +313,9 @@ class _DesktopSelectionServiceWidgetState
     }
 
     final offset = details.globalPosition;
+    if (_openLineBelowLastTable(offset)) {
+      return;
+    }
     final node = getNodeInOffset(offset);
     final selectable = node?.selectable;
     if (selectable == null) {

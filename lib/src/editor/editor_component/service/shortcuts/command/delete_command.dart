@@ -143,6 +143,13 @@ CommandShortcutEventHandler _deleteInNotCollapsedSelection = (editorState) {
   if (selection == null || selection.isCollapsed) {
     return KeyEventResult.ignored;
   }
+  // Select-all includes a table and the text inside its cells. Deleting that
+  // cell by cell leaves a broken table. Replace the document with one line.
+  if (editorState.selectionUpdateReason == SelectionUpdateReason.selectAll) {
+    editorState.leaveOneEmptyParagraph();
+
+    return KeyEventResult.handled;
+  }
   editorState.deleteSelection(selection);
 
   return KeyEventResult.handled;

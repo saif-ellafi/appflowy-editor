@@ -102,6 +102,8 @@ class _MobileSelectionServiceWidgetState
   bool isCollapsedHandleVisible = false;
 
   Timer? collapsedHandleTimer;
+  Timer? _horizontalScrollTimer;
+  bool _horizontalFollowScheduled = false;
 
   @override
   void initState() {
@@ -110,6 +112,7 @@ class _MobileSelectionServiceWidgetState
     WidgetsBinding.instance.addObserver(this);
     editorState.selectionNotifier.addListener(_updateSelection);
     editorState.addScrollViewScrolledListener(_handleAutoScrollWhileDragging);
+    _lastPanOffset.addListener(_scheduleHorizontalEdgeScroll);
   }
 
   @override
@@ -123,6 +126,8 @@ class _MobileSelectionServiceWidgetState
     editorState.removeScrollViewScrolledListener(
       _handleAutoScrollWhileDragging,
     );
+    _lastPanOffset.removeListener(_scheduleHorizontalEdgeScroll);
+    _stopHorizontalEdgeScroll();
     collapsedHandleTimer?.cancel();
 
     super.dispose();
@@ -239,6 +244,7 @@ class _MobileSelectionServiceWidgetState
         return MobileCollapsedHandle(
           layerLink: node.layerLink,
           rect: rect,
+          passThroughLeftOf: _rowMenuRightEdge(node),
           handleColor: editorStyle.dragHandleColor,
           handleWidth: editorStyle.mobileDragHandleWidth,
           handleBallWidth: editorStyle.mobileDragHandleBallSize.width,
@@ -255,6 +261,20 @@ class _MobileSelectionServiceWidgetState
         );
       },
     );
+  }
+
+  /// A line in a table's first column starts just right of the row's menu
+  /// handle, which sits on the table's left border. Its x there, in the
+  /// line's coordinates, so the caret's touch zone leaves it tappable.
+  double _rowMenuRightEdge(Node node) {
+    final cell = node.parent;
+    if (cell == null ||
+        cell.type != TableCellBlockKeys.type ||
+        cell.attributes[TableCellBlockKeys.colPosition] != 0) {
+      return double.negativeInfinity;
+    }
+
+    return tableMobileHandleOvalThickness / 2 - tableCellPaddingH;
   }
 
   Widget _buildLeftHandle() {
@@ -353,9 +373,13 @@ class _MobileSelectionServiceWidgetState
       editorState.editorStyle.autoDismissCollapsedHandleDuration,
       () {
         if (isCollapsedHandleVisible) {
+          // Only the handle goes. A keyboard closed meanwhile (say, for a
+          // table's menu) stays closed.
           editorState.updateSelectionWithReason(
             editorState.selection,
+            extraInfo: {selectionExtraInfoDoNotAttachTextService: true},
           );
+          editorState.selectionExtraInfo = null;
         }
       },
     );
@@ -403,6 +427,123 @@ class _MobileSelectionServiceWidgetState
     _panStartSelection = null;
     _panStartScrollDy = null;
     _lastPanOffset.value = null;
+  }
+
+  /// A wide table scrolls on its own horizontal axis. A selection drag does
+  /// not move that axis, so holding the caret against the left or right edge
+  /// of the table reveals the cells past it and the selection follows.
+  void _scheduleHorizontalEdgeScroll() {
+    if (!mounted || dragMode == MobileSelectionDragMode.none) {
+      _stopHorizontalEdgeScroll();
+      return;
+    }
+    final offset = _lastPanOffset.value;
+    if (offset == null || !_nudgeHorizontalScroll(offset)) {
+      _stopHorizontalEdgeScroll();
+      return;
+    }
+    if (!_horizontalFollowScheduled) {
+      _horizontalFollowScheduled = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _horizontalFollowScheduled = false;
+        if (!mounted || dragMode == MobileSelectionDragMode.none) {
+          return;
+        }
+        final current = _lastPanOffset.value;
+        if (current == null) {
+          return;
+        }
+        _followHorizontalScroll(current);
+      });
+    }
+    _horizontalScrollTimer ??= Timer.periodic(
+      const Duration(milliseconds: 50),
+      (_) {
+        if (!mounted || dragMode == MobileSelectionDragMode.none) {
+          _stopHorizontalEdgeScroll();
+          return;
+        }
+        final current = _lastPanOffset.value;
+        if (current == null || !_nudgeHorizontalScroll(current)) {
+          _stopHorizontalEdgeScroll();
+          return;
+        }
+        if (_horizontalFollowScheduled) {
+          return;
+        }
+        _horizontalFollowScheduled = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _horizontalFollowScheduled = false;
+          if (!mounted || dragMode == MobileSelectionDragMode.none) {
+            return;
+          }
+          final latest = _lastPanOffset.value;
+          if (latest == null) {
+            return;
+          }
+          _followHorizontalScroll(latest);
+        });
+      },
+    );
+  }
+
+  void _stopHorizontalEdgeScroll() {
+    _horizontalScrollTimer?.cancel();
+    _horizontalScrollTimer = null;
+  }
+
+  void _followHorizontalScroll(Offset offset) {
+    if (_panStartSelection != null && _panStartOffset != null) {
+      _updateSelectionDuringDrag(offset);
+      return;
+    }
+    final position = getPositionInOffset(offset);
+    if (position != null) {
+      updateSelection(Selection.collapsed(position));
+    }
+  }
+
+  bool _nudgeHorizontalScroll(Offset global) {
+    final context = getNodeInOffset(global)?.context;
+    if (context == null || !context.mounted) {
+      return false;
+    }
+    final scrollable = Scrollable.maybeOf(context);
+    if (scrollable == null) {
+      return false;
+    }
+    final axis = scrollable.axisDirection;
+    if (axis != AxisDirection.left && axis != AxisDirection.right) {
+      return false;
+    }
+    final box = scrollable.context.findRenderObject() as RenderBox?;
+    if (box == null || !box.hasSize) {
+      return false;
+    }
+    final position = scrollable.position;
+    if (!position.hasPixels || !position.hasContentDimensions) {
+      return false;
+    }
+    final local = box.globalToLocal(global);
+    const edge = 56.0;
+    const step = 48.0;
+    final double delta;
+    if (local.dx < edge) {
+      delta = -step;
+    } else if (local.dx > box.size.width - edge) {
+      delta = step;
+    } else {
+      return false;
+    }
+    final next = (position.pixels + delta).clamp(
+      position.minScrollExtent,
+      position.maxScrollExtent,
+    );
+    if (next == position.pixels) {
+      return false;
+    }
+    position.jumpTo(next);
+    return true;
   }
 
   @override
@@ -635,6 +776,34 @@ class _MobileSelectionServiceWidgetState
     );
   }
 
+  /// A tap in the empty space under a table that ends the document opens a
+  /// paragraph there. Otherwise the hit test lands in the last cell, and on
+  /// mobile there is no other way out of the table.
+  bool _openLineBelowLastTable(Offset offset) {
+    final children = editorState.document.root.children;
+    if (children.isEmpty) {
+      return false;
+    }
+    final last = children.last;
+    if (last.type != TableBlockKeys.type) {
+      return false;
+    }
+    final box = last.renderBox;
+    if (box == null || !box.attached || !box.hasSize) {
+      return false;
+    }
+    final bottom = box.localToGlobal(Offset(0, box.size.height)).dy;
+    if (offset.dy <= bottom) {
+      return false;
+    }
+    final transaction = editorState.transaction
+      ..insertNode(last.path.next, paragraphNode())
+      ..afterSelection = Selection.collapsed(Position(path: last.path.next));
+    editorState.apply(transaction);
+
+    return true;
+  }
+
   /// A block's own answer to a tap (see [SelectableMixin.getSelectionOnTap]),
   /// e.g. a picture selected whole. A range over a block takes no keyboard.
   bool _selectOnTap(Offset offset) {
@@ -658,7 +827,7 @@ class _MobileSelectionServiceWidgetState
   void _onTapUpIOS(TapUpDetails details) {
     final offset = details.globalPosition;
 
-    if (_selectOnTap(offset)) {
+    if (_openLineBelowLastTable(offset) || _selectOnTap(offset)) {
       return;
     }
 
@@ -781,6 +950,10 @@ class _MobileSelectionServiceWidgetState
 
   void _onTapUpAndroid(TapUpDetails details) {
     final offset = details.globalPosition;
+
+    if (_openLineBelowLastTable(offset)) {
+      return;
+    }
 
     clearSelection();
 

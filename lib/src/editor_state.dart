@@ -513,11 +513,35 @@ class EditorState {
 
     // If we have both nodes, we can find the nodes in the selection.
     if (startNode != null && endNode != null) {
-      final nodes = NodeIterator(
+      // Across cells, the selection is the rectangle in reading order.
+      // Storage order would walk down the column instead.
+      final span = tableCellSpan(document.root, normalized);
+      if (span != null) {
+        final nodes = nodesInCellSpan(span);
+
+        return selection.isForward ? nodes.reversed.toList() : nodes;
+      }
+      final iterated = NodeIterator(
         document: document,
         startNode: startNode,
         endNode: endNode,
       ).toList();
+      // With one end in a table, its cells are selected row by row from that
+      // end, not down the columns they are stored in.
+      final edges = tableEdges(document.root, normalized);
+      final nodes = edges.isEmpty ? iterated : <Node>[];
+      if (edges.isNotEmpty) {
+        final placed = <String>{};
+        for (final node in iterated) {
+          final table = node.findParent((n) => n.type == TableBlockKeys.type);
+          final edge = edges.where((edge) => edge.table.id == table?.id).firstOrNull;
+          if (edge == null) {
+            nodes.add(node);
+          } else if (placed.add(edge.table.id)) {
+            nodes.addAll(edge.nodes);
+          }
+        }
+      }
 
       return selection.isForward ? nodes.reversed.toList() : nodes;
     }

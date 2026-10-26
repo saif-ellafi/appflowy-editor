@@ -87,9 +87,13 @@ class _TableViewState extends State<TableView> {
           padding: const EdgeInsets.only(left: tableBorderChrome),
           child: TableActionButton(
             key: const ValueKey('table_add_row'),
+            // The plus only shows while the caret is in the table. The slot
+            // stays reserved so the paragraph below does not jump when it
+            // appears.
             padding: const EdgeInsets.only(top: 1, right: 30),
             icon: widget.tableStyle.addIcon,
-            height: 28,
+            // Chip is 20px and the top padding sits inside this height.
+            height: 24,
             width: widget.tableNode.tableWidth,
             visible: interaction.isActive,
             onPressed: () {

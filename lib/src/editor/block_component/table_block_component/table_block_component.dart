@@ -453,8 +453,37 @@ class _TableBlockComponentWidgetState extends State<TableBlockComponentWidget>
   @override
   Position end() => Position(path: widget.node.path, offset: 1);
 
+  /// The cell text nearest [start]. Arrowing up or down onto the table, or a
+  /// tap on its chrome, lands in a cell to type in, not on the table itself.
   @override
-  Position getPositionInOffset(Offset start) => end();
+  Position getPositionInOffset(Offset start) {
+    Node? nearest;
+    var distance = double.infinity;
+    void visit(Node node) {
+      if (node.delta != null) {
+        final box = node.renderBox;
+        if (box != null && box.attached && box.hasSize) {
+          final rect = box.localToGlobal(Offset.zero) & box.size;
+          final dx = start.dx < rect.left
+              ? rect.left - start.dx
+              : (start.dx > rect.right ? start.dx - rect.right : 0.0);
+          final dy = start.dy < rect.top
+              ? rect.top - start.dy
+              : (start.dy > rect.bottom ? start.dy - rect.bottom : 0.0);
+          final d = dx * dx + dy * dy;
+          if (d < distance) {
+            distance = d;
+            nearest = node;
+          }
+        }
+      }
+      node.children.forEach(visit);
+    }
+
+    widget.node.children.forEach(visit);
+
+    return nearest?.selectable?.getPositionInOffset(start) ?? end();
+  }
 
   @override
   List<Rect> getRectsInSelection(
@@ -539,9 +568,13 @@ SelectionMenuItem tableMenuItem = SelectionMenuItem(
 
     final transaction = editorState.transaction;
     final delta = currentNode.delta;
+    final leaveLine = currentNode.next == null;
     if (delta != null && delta.isEmpty) {
       transaction
-        ..insertNode(selection.end.path, tableNode.node)
+        ..insertNodes(selection.end.path, [
+          tableNode.node,
+          if (leaveLine) paragraphNode(),
+        ])
         ..deleteNode(currentNode);
       transaction.afterSelection = Selection.collapsed(
         Position(
@@ -549,7 +582,10 @@ SelectionMenuItem tableMenuItem = SelectionMenuItem(
         ),
       );
     } else {
-      transaction.insertNode(selection.end.path.next, tableNode.node);
+      transaction.insertNodes(selection.end.path.next, [
+        tableNode.node,
+        if (leaveLine) paragraphNode(),
+      ]);
       transaction.afterSelection = Selection.collapsed(
         Position(
           path: selection.end.path.next + [0, 0],

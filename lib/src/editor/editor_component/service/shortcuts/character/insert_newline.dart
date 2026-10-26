@@ -1,5 +1,4 @@
-import 'package:appflowy_editor/src/editor/command/transform.dart';
-import 'package:appflowy_editor/src/editor/editor_component/service/shortcuts/character_shortcut_event.dart';
+import 'package:appflowy_editor/appflowy_editor.dart';
 import 'package:appflowy_editor/src/editor/util/platform_extension.dart';
 import 'package:flutter/services.dart';
 
@@ -17,6 +16,11 @@ final CharacterShortcutEvent insertNewLine = CharacterShortcutEvent(
 );
 
 CharacterShortcutEventHandler _insertNewLineHandler = (editorState) async {
+  final selection = editorState.selection?.normalized;
+  if (selection == null) {
+    return false;
+  }
+
   // on desktop or web, shift + enter to insert a '\n' character to the same line.
   // so, we should return the false to let the system handle it.
   if (PlatformExtension.isNotMobile &&
@@ -24,9 +28,14 @@ CharacterShortcutEventHandler _insertNewLineHandler = (editorState) async {
     return false;
   }
 
-  final selection = editorState.selection?.normalized;
-  if (selection == null) {
-    return false;
+  // The mobile key is labeled newline. Inside a cell that is a line break in
+  // the cell, the same as Shift+Enter on desktop, so backspace removes it.
+  if (PlatformExtension.isMobile) {
+    final node = editorState.getNodeAtPath(selection.start.path);
+    if (node?.parent?.type == TableCellBlockKeys.type) {
+      // At the very start of the table, it opens a line above instead.
+      return openLineAboveTable(editorState);
+    }
   }
 
   // delete the selection
