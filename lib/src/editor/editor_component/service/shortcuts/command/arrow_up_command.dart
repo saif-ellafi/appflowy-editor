@@ -1,10 +1,14 @@
 import 'package:appflowy_editor/appflowy_editor.dart';
 import 'package:flutter/material.dart';
 
+import 'paragraph_navigation.dart';
+
 final List<CommandShortcutEvent> arrowUpKeys = [
   moveCursorUpCommand,
   moveCursorTopSelectCommand,
   moveCursorTopCommand,
+  moveParagraphUpCommand,
+  moveParagraphUpSelectCommand,
   moveCursorUpSelectCommand,
 ];
 
@@ -39,12 +43,12 @@ CommandShortcutEventHandler _moveCursorUpCommandHandler = (editorState) {
   return KeyEventResult.handled;
 };
 
-/// arrow up + shift + ctrl or cmd
-/// move the cursor to the topmost position of the document and select everything in between
+/// Cmd+Shift+Up on macOS: select to the start of the document.
+/// Windows and Linux use Ctrl+Shift+Home for that, and Ctrl+Shift+Up for a paragraph.
 final CommandShortcutEvent moveCursorTopSelectCommand = CommandShortcutEvent(
   key: 'move cursor to start of file and select all',
   getDescription: () => AppFlowyEditorL10n.current.cmdMoveCursorTopSelect,
-  command: 'ctrl+shift+arrow up',
+  command: '',
   macOSCommand: 'cmd+shift+arrow up',
   handler: _moveCursorTopSelectCommandHandler,
 );
@@ -69,14 +73,32 @@ CommandShortcutEventHandler _moveCursorTopSelectCommandHandler = (editorState) {
   return KeyEventResult.handled;
 };
 
-/// arrow up + ctrl or cmd
-/// move the cursor to the topmost position of the document
+/// Cmd+Up on macOS: move the caret to the start of the document.
+/// Windows and Linux use Ctrl+Home for that, and Ctrl+Up for a paragraph.
 final CommandShortcutEvent moveCursorTopCommand = CommandShortcutEvent(
   key: 'move cursor to start of file',
   getDescription: () => AppFlowyEditorL10n.current.cmdMoveCursorTop,
-  command: 'ctrl+arrow up',
+  command: '',
   macOSCommand: 'cmd+arrow up',
   handler: _moveCursorTopCommandHandler,
+);
+
+/// Ctrl+Up, or Option+Up on macOS: the previous paragraph.
+final CommandShortcutEvent moveParagraphUpCommand = CommandShortcutEvent(
+  key: 'move cursor to the previous paragraph',
+  getDescription: () => 'move cursor to the previous paragraph',
+  command: 'ctrl+arrow up',
+  macOSCommand: 'alt+arrow up',
+  handler: (editorState) => moveByParagraph(editorState, up: true, extend: false),
+);
+
+/// Ctrl+Shift+Up, or Option+Shift+Up on macOS: extend the selection by one paragraph.
+final CommandShortcutEvent moveParagraphUpSelectCommand = CommandShortcutEvent(
+  key: 'select the previous paragraph',
+  getDescription: () => 'select the previous paragraph',
+  command: 'ctrl+shift+arrow up',
+  macOSCommand: 'alt+shift+arrow up',
+  handler: (editorState) => moveByParagraph(editorState, up: true, extend: true),
 );
 
 CommandShortcutEventHandler _moveCursorTopCommandHandler = (editorState) {

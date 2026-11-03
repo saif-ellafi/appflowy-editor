@@ -1,3 +1,5 @@
+import 'dart:ui' show TextRange;
+
 import 'package:appflowy_editor/appflowy_editor.dart';
 import 'package:flutter/material.dart';
 
@@ -89,6 +91,11 @@ mixin DefaultSelectableMixin {
 
   Selection? getWordBoundaryInPosition(Position position) =>
       forward.getWordBoundaryInPosition(position);
+
+  TextRange? getLineBoundaryInPosition(Position position) =>
+      forwardKey.currentState != null
+          ? forward.getLineBoundaryInPosition(position)
+          : null;
 
   Position start() => forward.start();
 

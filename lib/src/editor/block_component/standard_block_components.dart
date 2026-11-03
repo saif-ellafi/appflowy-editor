@@ -125,7 +125,9 @@ final List<CommandShortcutEvent> standardCommandShortcutEvents = [
 
   //
   homeCommand,
+  selectToDocumentStartCommand,
   endCommand,
+  selectToDocumentEndCommand,
 
   //
   toggleTodoListCommand,
@@ -145,7 +147,9 @@ final List<CommandShortcutEvent> standardCommandShortcutEvents = [
 
   //
   pageUpCommand,
+  pageUpSelectCommand,
   pageDownCommand,
+  pageDownSelectCommand,
 
   //
   selectAllCommand,

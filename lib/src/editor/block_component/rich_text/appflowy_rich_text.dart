@@ -308,6 +308,25 @@ class _AppFlowyRichTextState extends State<AppFlowyRichText>
   }
 
   @override
+  TextRange? getLineBoundaryInPosition(Position position) {
+    final render = _renderParagraph;
+    if (render == null || !render.hasSize || render.size.width <= 0) {
+      return null;
+    }
+    final length = render.text.toPlainText().length;
+    final offset = position.offset.clamp(0, length);
+    final textPosition = TextPosition(offset: offset);
+    final caret = render.getOffsetForCaret(textPosition, Rect.zero);
+    final height = render.getFullHeightForCaret(textPosition);
+    final y = caret.dy + height / 2;
+    final left = render.getPositionForOffset(Offset(0, y)).offset;
+    final right = render
+        .getPositionForOffset(Offset(max(0, render.size.width - 1), y))
+        .offset;
+    return TextRange(start: min(left, right), end: max(left, right));
+  }
+
+  @override
   Selection? getWordBoundaryInPosition(Position position) {
     final textPosition = TextPosition(offset: position.offset);
     final textRange =

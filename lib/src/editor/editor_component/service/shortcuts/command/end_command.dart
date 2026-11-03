@@ -44,3 +44,28 @@ CommandShortcutEventHandler _endCommandHandler = (editorState) {
 
   return KeyEventResult.handled;
 };
+
+/// Ctrl+Shift+End: select from the caret to the end of the document.
+final CommandShortcutEvent selectToDocumentEndCommand = CommandShortcutEvent(
+  key: 'select to the end of the document',
+  getDescription: () => AppFlowyEditorL10n.current.cmdMoveCursorBottomSelect,
+  command: 'ctrl+shift+end',
+  handler: _selectToDocumentEndCommandHandler,
+);
+
+CommandShortcutEventHandler _selectToDocumentEndCommandHandler = (editorState) {
+  final selection = editorState.selection;
+  if (selection == null) {
+    return KeyEventResult.ignored;
+  }
+  final result = editorState.getLastSelectable();
+  if (result == null) {
+    return KeyEventResult.ignored;
+  }
+  editorState.scrollService?.jumpToBottom();
+  editorState.updateSelectionWithReason(
+    selection.copyWith(end: result.$2.end(result.$1)),
+    reason: SelectionUpdateReason.uiEvent,
+  );
+  return KeyEventResult.handled;
+};

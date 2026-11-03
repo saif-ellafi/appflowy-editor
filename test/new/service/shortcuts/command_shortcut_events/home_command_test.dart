@@ -103,5 +103,24 @@ void main() async {
         await editor.dispose();
       }
     });
+
+    testWidgets('ctrl+shift+home selects to the start of the document', (tester) async {
+      final editor = tester.editor..addParagraphs(3, initialText: text);
+      await editor.startTesting();
+      final selection = Selection.collapsed(Position(path: [1], offset: 4));
+      await editor.updateSelection(selection);
+
+      await editor.pressKey(
+        key: LogicalKeyboardKey.home,
+        isControlPressed: true,
+        isShiftPressed: true,
+      );
+
+      expect(
+        editor.selection,
+        selection.copyWith(end: Position(path: [0])),
+      );
+      await editor.dispose();
+    });
   });
 }

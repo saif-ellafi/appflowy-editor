@@ -98,19 +98,21 @@ void main() async {
 
     await select(true);
 
+    // macOS Cmd+Shift+Up selects to the start of the document.
+    // Windows and Linux Ctrl+Shift+Up selects to the start of this paragraph.
     expect(
       editor.selection,
       selection.copyWith(
-        end: Position(path: [0]),
+        end: Position(path: Platform.isMacOS ? [0] : [1]),
       ),
     );
 
     await select(false);
     expect(
       editor.selection,
-      selection.copyWith(
-        end: Position(path: [2], offset: 19),
-      ),
+      Platform.isMacOS
+          ? selection.copyWith(end: Position(path: [2], offset: 19))
+          : selection.copyWith(end: Position(path: [2])),
     );
 
     await editor.dispose();
@@ -745,9 +747,14 @@ Future<void> _testPressArrowKeyWithMetaInSelection(
     isMetaPressed: Platform.isMacOS,
   );
 
+  // macOS Cmd+Down goes to the end of the document.
+  // Windows and Linux Ctrl+Down goes to the start of the next paragraph.
   expect(
     editor.selection,
-    Selection.single(path: [1], startOffset: text.length),
+    Selection.single(
+      path: [1],
+      startOffset: Platform.isMacOS ? text.length : 0,
+    ),
   );
 
   await editor.dispose();

@@ -1,3 +1,5 @@
+import 'dart:ui' show TextRange;
+
 import 'package:appflowy_editor/src/core/location/position.dart';
 import 'package:appflowy_editor/src/core/location/selection.dart';
 import 'package:flutter/material.dart';
@@ -85,6 +87,10 @@ mixin SelectableMixin<T extends StatefulWidget> on State<T> {
   /// Only the widget rendered by [TextNode] need to implement the detail,
   ///   and the rest can return null.
   Selection? getWordBoundaryInPosition(Position position) => null;
+
+  /// The text range of the visual row containing [position], or null when
+  /// this block has no wrapped text.
+  TextRange? getLineBoundaryInPosition(Position position) => null;
 
   /// The selection a click at [offset] makes, or null for the default: a
   /// caret for [CursorStyle.verticalLine], the whole block otherwise.

@@ -42,3 +42,28 @@ CommandShortcutEventHandler _homeCommandHandler = (editorState) {
 
   return KeyEventResult.handled;
 };
+
+/// Ctrl+Shift+Home: select from the caret to the start of the document.
+final CommandShortcutEvent selectToDocumentStartCommand = CommandShortcutEvent(
+  key: 'select to the start of the document',
+  getDescription: () => AppFlowyEditorL10n.current.cmdMoveCursorTopSelect,
+  command: 'ctrl+shift+home',
+  handler: _selectToDocumentStartCommandHandler,
+);
+
+CommandShortcutEventHandler _selectToDocumentStartCommandHandler = (editorState) {
+  final selection = editorState.selection;
+  if (selection == null) {
+    return KeyEventResult.ignored;
+  }
+  final result = editorState.getFirstSelectable();
+  if (result == null) {
+    return KeyEventResult.ignored;
+  }
+  editorState.scrollService?.jumpToTop();
+  editorState.updateSelectionWithReason(
+    selection.copyWith(end: result.$2.start(result.$1)),
+    reason: SelectionUpdateReason.uiEvent,
+  );
+  return KeyEventResult.handled;
+};

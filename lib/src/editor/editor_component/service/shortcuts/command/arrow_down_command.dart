@@ -1,10 +1,14 @@
 import 'package:appflowy_editor/appflowy_editor.dart';
 import 'package:flutter/material.dart';
 
+import 'paragraph_navigation.dart';
+
 final List<CommandShortcutEvent> arrowDownKeys = [
   moveCursorDownCommand,
   moveCursorBottomSelectCommand,
   moveCursorBottomCommand,
+  moveParagraphDownCommand,
+  moveParagraphDownSelectCommand,
   moveCursorDownSelectCommand,
 ];
 
@@ -39,12 +43,12 @@ CommandShortcutEventHandler _moveCursorDownCommandHandler = (editorState) {
   return KeyEventResult.handled;
 };
 
-/// arrow down + shift + ctrl or cmd
-/// move the cursor to the bottommost position of the document and select everything in between
+/// Cmd+Shift+Down on macOS: select to the end of the document.
+/// Windows and Linux use Ctrl+Shift+End for that, and Ctrl+Shift+Down for a paragraph.
 CommandShortcutEvent moveCursorBottomSelectCommand = CommandShortcutEvent(
   key: 'move cursor to end of file and select all',
   getDescription: () => AppFlowyEditorL10n.current.cmdMoveCursorBottomSelect,
-  command: 'ctrl+shift+arrow down',
+  command: '',
   macOSCommand: 'cmd+shift+arrow down',
   handler: _moveCursorBottomSelectCommandHandler,
 );
@@ -71,14 +75,32 @@ CommandShortcutEventHandler _moveCursorBottomSelectCommandHandler =
   return KeyEventResult.handled;
 };
 
-/// arrow down + ctrl or cmd
-/// move the cursor to the bottommost position of the document
+/// Cmd+Down on macOS: move the caret to the end of the document.
+/// Windows and Linux use Ctrl+End for that, and Ctrl+Down for a paragraph.
 CommandShortcutEvent moveCursorBottomCommand = CommandShortcutEvent(
   key: 'move cursor to end of file',
   getDescription: () => AppFlowyEditorL10n.current.cmdMoveCursorBottom,
-  command: 'ctrl+arrow down',
+  command: '',
   macOSCommand: 'cmd+arrow down',
   handler: _moveCursorBottomCommandHandler,
+);
+
+/// Ctrl+Down, or Option+Down on macOS: the next paragraph.
+CommandShortcutEvent moveParagraphDownCommand = CommandShortcutEvent(
+  key: 'move cursor to the next paragraph',
+  getDescription: () => 'move cursor to the next paragraph',
+  command: 'ctrl+arrow down',
+  macOSCommand: 'alt+arrow down',
+  handler: (editorState) => moveByParagraph(editorState, up: false, extend: false),
+);
+
+/// Ctrl+Shift+Down, or Option+Shift+Down on macOS: extend the selection by one paragraph.
+CommandShortcutEvent moveParagraphDownSelectCommand = CommandShortcutEvent(
+  key: 'select the next paragraph',
+  getDescription: () => 'select the next paragraph',
+  command: 'ctrl+shift+arrow down',
+  macOSCommand: 'alt+shift+arrow down',
+  handler: (editorState) => moveByParagraph(editorState, up: false, extend: true),
 );
 
 CommandShortcutEventHandler _moveCursorBottomCommandHandler = (editorState) {

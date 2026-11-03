@@ -1,6 +1,8 @@
 import 'package:appflowy_editor/appflowy_editor.dart';
 import 'package:flutter/material.dart';
 
+import 'visual_line.dart';
+
 final List<CommandShortcutEvent> arrowLeftKeys = [
   moveCursorLeftCommand,
   moveCursorToBeginCommand,
@@ -40,8 +42,7 @@ CommandShortcutEventHandler _arrowLeftCommandHandler = (editorState) {
   return KeyEventResult.handled;
 };
 
-// arrow left key + ctrl or command
-// move the cursor to the beginning of the block
+// Home, or Cmd+Left on macOS: the start of the visual row.
 final CommandShortcutEvent moveCursorToBeginCommand = CommandShortcutEvent(
   key: 'move the cursor at the start of line',
   getDescription: () => AppFlowyEditorL10n.current.cmdMoveCursorLineStart,
@@ -51,17 +52,7 @@ final CommandShortcutEvent moveCursorToBeginCommand = CommandShortcutEvent(
 );
 
 CommandShortcutEventHandler _moveCursorToBeginCommandHandler = (editorState) {
-  final selection = editorState.selection;
-  if (selection == null) {
-    return KeyEventResult.ignored;
-  }
-  if (isRTL(editorState)) {
-    editorState.moveCursorBackward(SelectionMoveRange.line);
-  } else {
-    editorState.moveCursorForward(SelectionMoveRange.line);
-  }
-
-  return KeyEventResult.handled;
+  return moveToVisualLine(editorState, atStart: true, extend: false);
 };
 
 // arrow left key + alt
@@ -203,27 +194,7 @@ final CommandShortcutEvent moveCursorBeginSelectCommand = CommandShortcutEvent(
 
 CommandShortcutEventHandler _moveCursorBeginSelectCommandHandler =
     (editorState) {
-  final selection = editorState.selection;
-  if (selection == null) {
-    return KeyEventResult.ignored;
-  }
-  final nodes = editorState.getNodesInSelection(selection);
-  if (nodes.isEmpty) {
-    return KeyEventResult.ignored;
-  }
-  var end = selection.end;
-  final position = isRTL(editorState)
-      ? nodes.last.selectable?.end()
-      : nodes.last.selectable?.start();
-  if (position != null) {
-    end = position;
-  }
-  editorState.updateSelectionWithReason(
-    selection.copyWith(end: end),
-    reason: SelectionUpdateReason.uiEvent,
-  );
-
-  return KeyEventResult.handled;
+  return moveToVisualLine(editorState, atStart: true, extend: true);
 };
 
 bool isRTL(EditorState editorState) {

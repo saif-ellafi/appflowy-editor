@@ -1,6 +1,8 @@
 import 'package:appflowy_editor/appflowy_editor.dart';
 import 'package:flutter/material.dart';
 
+import 'visual_line.dart';
+
 final List<CommandShortcutEvent> arrowRightKeys = [
   moveCursorRightCommand,
   moveCursorToEndCommand,
@@ -40,8 +42,7 @@ CommandShortcutEventHandler _arrowRightCommandHandler = (editorState) {
   return KeyEventResult.handled;
 };
 
-// arrow right key + ctrl or command
-// move the cursor to the end of the block
+// End, or Cmd+Right on macOS: the end of the visual row.
 final CommandShortcutEvent moveCursorToEndCommand = CommandShortcutEvent(
   key: 'move the cursor to the end of line',
   getDescription: () => AppFlowyEditorL10n.current.cmdMoveCursorLineEnd,
@@ -51,17 +52,7 @@ final CommandShortcutEvent moveCursorToEndCommand = CommandShortcutEvent(
 );
 
 CommandShortcutEventHandler _moveCursorToEndCommandHandler = (editorState) {
-  final selection = editorState.selection;
-  if (selection == null) {
-    return KeyEventResult.ignored;
-  }
-  if (isRTL(editorState)) {
-    editorState.moveCursorForward(SelectionMoveRange.line);
-  } else {
-    editorState.moveCursorBackward(SelectionMoveRange.line);
-  }
-
-  return KeyEventResult.handled;
+  return moveToVisualLine(editorState, atStart: false, extend: false);
 };
 
 // arrow right key + alt
@@ -206,25 +197,5 @@ final CommandShortcutEvent moveCursorEndSelectCommand = CommandShortcutEvent(
 );
 
 CommandShortcutEventHandler _moveCursorEndSelectCommandHandler = (editorState) {
-  final selection = editorState.selection;
-  if (selection == null) {
-    return KeyEventResult.ignored;
-  }
-  final nodes = editorState.getNodesInSelection(selection);
-  if (nodes.isEmpty) {
-    return KeyEventResult.ignored;
-  }
-  var end = selection.end;
-  final position = isRTL(editorState)
-      ? nodes.last.selectable?.start()
-      : nodes.last.selectable?.end();
-  if (position != null) {
-    end = position;
-  }
-  editorState.updateSelectionWithReason(
-    selection.copyWith(end: end),
-    reason: SelectionUpdateReason.uiEvent,
-  );
-
-  return KeyEventResult.handled;
+  return moveToVisualLine(editorState, atStart: false, extend: true);
 };
