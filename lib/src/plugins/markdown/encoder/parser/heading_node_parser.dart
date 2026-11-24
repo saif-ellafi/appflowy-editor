@@ -10,7 +10,9 @@ class HeadingNodeParser extends NodeParser {
   String transform(Node node, DocumentMarkdownEncoder? encoder) {
     final delta = node.delta ?? Delta()
       ..insert('');
-    final markdown = DeltaMarkdownEncoder().convert(delta);
+    final markdown = DeltaMarkdownEncoder(
+      inlineWrappers: encoder?.inlineWrappers ?? const [],
+    ).convert(delta);
     final attributes = node.attributes;
     final level = attributes[HeadingBlockKeys.level] as int? ?? 1;
     final result = '${'#' * level} $markdown';

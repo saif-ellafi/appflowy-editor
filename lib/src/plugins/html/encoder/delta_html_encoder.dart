@@ -14,7 +14,33 @@ class DeltaHTMLEncoder extends Converter<Delta, List<dom.Node>> {
     return input
         .whereType<TextInsert>()
         .map(convertTextInsertToDomNode)
+        .expand(_withLineBreaks)
         .toList();
+  }
+
+  /// A line break inside a paragraph as `<br>`: the HTML string drops raw
+  /// newlines, which would glue the two lines together.
+  static List<dom.Node> _withLineBreaks(dom.Node node) {
+    if (node is dom.Text) {
+      if (!node.text.contains('\n')) return [node];
+      final lines = node.text.split('\n');
+      return [
+        for (var i = 0; i < lines.length; i++) ...[
+          if (i > 0) dom.Element.tag(HTMLTags.br),
+          if (lines[i].isNotEmpty) dom.Text(lines[i]),
+        ],
+      ];
+    }
+    for (final child in node.nodes.toList()) {
+      final replaced = _withLineBreaks(child);
+      if (replaced.length == 1 && identical(replaced.first, child)) continue;
+      for (final part in replaced) {
+        node.insertBefore(part, child);
+      }
+      child.remove();
+    }
+
+    return [node];
   }
 
   dom.Node convertTextInsertToDomNode(TextInsert textInsert) {

@@ -16,7 +16,10 @@ class TableNodeParser extends NodeParser {
     for (var i = 0; i < rowsLen; i++) {
       for (var j = 0; j < colsLen; j++) {
         final Node cell = getCellNode(node, j, i)!;
-        String cellText = documentToMarkdown(Document(root: cell));
+        String cellText = documentToMarkdown(
+          Document(root: cell),
+          inlineWrappers: encoder?.inlineWrappers ?? const [],
+        );
         
         // Remove trailing newlines and substitute internal newlines with <br> to prevent breaking the markdown table
         cellText = cellText.trimRight().replaceAll('\n', '<br>');

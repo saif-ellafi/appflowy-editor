@@ -122,7 +122,7 @@ class PdfHTMLEncoder {
           final attributes = _parserFormattingElementAttributes(domNode);
           nodes.add(
             pw.Paragraph(
-              text: domNode.text,
+              text: _inlineText(domNode),
               style: attributes.$2,
             ),
           );
@@ -404,15 +404,14 @@ class PdfHTMLEncoder {
         attributes =
             attributes.copyWith(decoration: pw.TextDecoration.lineThrough);
         break;
-      /*
-      case HTMLTags.span || HTMLTags.mark:
-        final deltaAttributes = _getDeltaAttributesFromHTMLAttributes(
-              element.attributes,
-            ) ??
-            {};
-        attributes.addAll(deltaAttributes);
+      case HTMLTags.span:
+      case HTMLTags.mark:
+        // Inline CSS: color, background, weight, italics and decoration.
+        final css = _getDeltaAttributesFromHTMLAttributes(element.attributes);
+        textAlign = css.$1 ?? textAlign;
+        attributes = attributes.merge(css.$2);
+        if (css.$2.decoration != null) decoration.add(css.$2.decoration!);
         break;
-                */
       case HTMLTags.anchor:
         final href = element.attributes['href'];
         if (href != null) {
@@ -458,7 +457,7 @@ class PdfHTMLEncoder {
         textAlign = attributes.$1;
         textSpan.add(
           pw.TextSpan(
-            text: child.text,
+            text: _inlineText(child),
             style: attributes.$2,
           ),
         );
@@ -625,6 +624,15 @@ class PdfHTMLEncoder {
     }
   }
 
+  /// [node]'s text, with each `<br>` inside it as a line break.
+  static String _inlineText(dom.Node node) {
+    if (node is dom.Text) return node.text;
+    if (node is! dom.Element) return '';
+    if (node.localName == HTMLTags.br) return '\n';
+
+    return node.nodes.map(_inlineText).join();
+  }
+
   Future<pw.Widget> _parseDeltaElement(
     dom.Element element,
   ) async {
@@ -657,7 +665,7 @@ class PdfHTMLEncoder {
               textAlign = attributes.$1;
               textSpan.add(
                 pw.TextSpan(
-                  text: child.text.replaceAll(RegExp(r'\n+$'), ''),
+                  text: _inlineText(child).replaceAll(RegExp(r'\n+$'), ''),
                   style: attributes.$2,
                 ),
               );

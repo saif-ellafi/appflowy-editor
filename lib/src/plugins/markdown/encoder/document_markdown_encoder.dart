@@ -7,10 +7,14 @@ class DocumentMarkdownEncoder extends Converter<Document, String> {
   DocumentMarkdownEncoder({
     this.parsers = const [],
     this.lineBreak = '',
+    this.inlineWrappers = const [],
   });
 
   final List<NodeParser> parsers;
   final String lineBreak;
+
+  /// Passed on to each [DeltaMarkdownEncoder] the parsers create.
+  final List<MarkdownInlineWrapper> inlineWrappers;
 
   @override
   String convert(Document input) {

@@ -36,10 +36,14 @@ Document markdownToDocument(
 /// Converts a [Document] to markdown.
 ///
 /// [customParsers] is a list of custom parsers that will be used to parse the markdown.
+///
+/// [inlineWrappers] add markdown for inline attributes the encoder does not
+/// know (see [MarkdownInlineWrapper]).
 String documentToMarkdown(
   Document document, {
   List<NodeParser> customParsers = const [],
   String lineBreak = '',
+  List<MarkdownInlineWrapper> inlineWrappers = const [],
 }) {
   return AppFlowyEditorMarkdownCodec(
     encodeParsers: [
@@ -56,6 +60,7 @@ String documentToMarkdown(
       const DividerNodeParser(),
     ],
     lineBreak: lineBreak,
+    inlineWrappers: inlineWrappers,
   ).encode(document);
 }
 
@@ -65,12 +70,14 @@ class AppFlowyEditorMarkdownCodec extends Codec<Document, String> {
     this.markdownParsers = const [],
     this.encodeParsers = const [],
     this.lineBreak = '',
+    this.inlineWrappers = const [],
   });
 
   final List<NodeParser> encodeParsers;
   final List<CustomMarkdownParser> markdownParsers;
   final List<md.InlineSyntax> markdownInlineSyntaxes;
   final String lineBreak;
+  final List<MarkdownInlineWrapper> inlineWrappers;
 
   @override
   Converter<String, Document> get decoder => DocumentMarkdownDecoder(
@@ -82,5 +89,6 @@ class AppFlowyEditorMarkdownCodec extends Codec<Document, String> {
   Converter<Document, String> get encoder => DocumentMarkdownEncoder(
         parsers: encodeParsers,
         lineBreak: lineBreak,
+        inlineWrappers: inlineWrappers,
       );
 }
